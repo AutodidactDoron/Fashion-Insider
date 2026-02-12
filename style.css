@@ -1,0 +1,1047 @@
+/* ========== FashionInsiderIL style applied to Bootcamp ========== */
+:root {
+  --bg-dark: #0d1117;
+  --card-bg: rgba(22, 27, 34, 0.7);
+  --accent: #58a6ff;
+  --accent-hover: #79b8ff;
+  --text-gray: #8b949e;
+  --success: #2ea043;
+  --success-hover: #238636;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-medium: #30363d;
+}
+
+/* Live Activity Ticker – infinite scroll (stock market style) */
+.activity-ticker-track {
+  mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+}
+.activity-ticker-inner {
+  animation: activity-ticker-scroll 60s linear infinite;
+  will-change: transform;
+}
+.activity-ticker-inner:hover {
+  animation-play-state: paused;
+}
+.activity-ticker-item {
+  cursor: pointer;
+}
+.activity-ticker-item:hover {
+  color: #e6edf3;
+}
+@keyframes activity-ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* KYC Verify modal: blue checkmark badge – white V check inside blue circle */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: #58a6ff;
+  color: #fff;
+  flex-shrink: 0;
+}
+.verified-badge .verified-check-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #fff;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+}
+.verified-badge.hidden {
+  display: none !important;
+}
+
+/* PRO Membership: upgrade button shine + modal (black & gold) */
+@keyframes pro-shine {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-pro-shine {
+  animation: pro-shine 2.5s ease-in-out infinite;
+}
+.btn-upgrade-pro {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.35);
+}
+.btn-upgrade-pro:hover {
+  box-shadow: 0 0 28px rgba(212, 175, 55, 0.5);
+}
+.pro-crown {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+}
+.display-avatar.pro {
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.8);
+}
+
+/* PRO modal: premium black & gold */
+.pro-modal-panel {
+  background: linear-gradient(165deg, #0f0f12 0%, #1a1810 50%, #0f0f12 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 80px rgba(212, 175, 55, 0.08);
+  position: relative;
+}
+.pro-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.06) 0%, transparent 100%);
+}
+.pro-modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f0e68c, #ffd700, #daa520);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.02em;
+}
+.pro-modal-close {
+  background: none;
+  border: none;
+  color: rgba(212, 175, 55, 0.7);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  -webkit-text-fill-color: initial;
+}
+.pro-modal-close:hover {
+  color: #ffd700;
+}
+.pro-modal-body {
+  padding: 28px;
+}
+.pro-modal-subtitle {
+  color: #b8b4a8;
+  font-size: 0.95rem;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+.pro-modal-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.pro-col {
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  position: relative;
+}
+.pro-col-starter {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.pro-col-pro {
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.04) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.1);
+}
+.pro-col-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #daa520, #ffd700);
+  color: #0f0f12;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+.pro-col-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #8b949e;
+  margin-bottom: 8px;
+}
+.pro-col-pro .pro-col-header {
+  color: rgba(212, 175, 55, 0.95);
+}
+.pro-col-price {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 16px;
+}
+.pro-col-pro .pro-col-price {
+  background: linear-gradient(135deg, #f0e68c, #ffd700);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.pro-col-period {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.pro-col-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  color: #c9d1d9;
+  font-size: 0.9rem;
+  line-height: 1.9;
+}
+.pro-col-pro .pro-col-features {
+  color: #e6edf3;
+}
+.pro-modal-subscribe {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #0f0f12;
+  background: linear-gradient(135deg, #f0e68c, #ffd700, #daa520);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(212, 175, 55, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.pro-modal-subscribe:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.5);
+}
+.pro-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 15, 18, 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border-radius: 20px;
+}
+.pro-modal-overlay.hidden {
+  display: none;
+}
+.pro-modal-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(212, 175, 55, 0.2);
+  border-top-color: #ffd700;
+  border-radius: 50%;
+  animation: pro-spinner 0.9s linear infinite;
+}
+@keyframes pro-spinner {
+  to { transform: rotate(360deg); }
+}
+.pro-modal-overlay-text {
+  margin: 16px 0 0 0;
+  color: rgba(212, 175, 55, 0.9);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.pro-modal-success-title {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffd700;
+}
+.pro-modal-success-sub {
+  margin: 0 0 24px 0;
+  color: #b8b4a8;
+  font-size: 0.95rem;
+  text-align: center;
+}
+.pro-modal-success-btn {
+  padding: 12px 32px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f0f12;
+  background: linear-gradient(135deg, #f0e68c, #ffd700);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.pro-modal-success-btn:hover {
+  opacity: 0.95;
+}
+
+/* Safe Zones: navigation buttons (Waze / Google Maps) */
+.safe-zone-nav-btns {
+  display: inline-flex;
+}
+.safe-zone-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.safe-zone-nav-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+.safe-zone-nav-icon {
+  width: 18px;
+  height: 18px;
+}
+.btn-nav-waze {
+  background: #33ccff;
+  color: #fff;
+}
+.btn-nav-waze:hover {
+  background: #2eb8e6;
+}
+.btn-nav-gmaps {
+  background: #34a853;
+  color: #fff;
+}
+.btn-nav-gmaps:hover {
+  background: #2d8f47;
+}
+
+/* Daily Lucky Wheel */
+.lucky-wheel-panel {
+  background: linear-gradient(145deg, rgba(28, 28, 32, 0.98), rgba(18, 18, 22, 0.98));
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 193, 7, 0.1);
+}
+.lucky-wheel-wheel {
+  transition: transform 6s cubic-bezier(0.15, 0.85, 0.1, 1);
+}
+.lucky-wheel-center {
+  margin: 12%;
+  border-radius: 50%;
+}
+.lucky-wheel-segments {
+  /* background set by JS (conic-gradient) */
+}
+.lucky-wheel-labels {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+.lucky-wheel-labels .lucky-wheel-label {
+  position: absolute;
+  width: 28%;
+  max-width: 4rem;
+  text-align: center;
+  font-size: 0.55rem;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+/* Minimized FAB after daily spin (cooldown) */
+.lucky-wheel-fab.lucky-wheel-fab--minimized {
+  padding: 0.4rem 0.5rem;
+  border-radius: 9999px;
+  min-width: auto;
+}
+.lucky-wheel-fab.lucky-wheel-fab--minimized .lucky-wheel-fab-text {
+  display: none;
+}
+.lucky-wheel-fab.lucky-wheel-fab--minimized .lucky-wheel-fab-icon {
+  font-size: 1.25rem;
+}
+.lucky-wheel-result-overlay {
+  transition: opacity 0.3s ease;
+}
+
+/* Chat: smart message filter – warning toast and input shake */
+.chat-toast {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: rgba(248, 81, 73, 0.15);
+  border: 1px solid rgba(248, 81, 73, 0.5);
+  color: #f85149;
+}
+.chat-toast.hidden {
+  display: none !important;
+}
+.messages-input.shake {
+  animation: chat-input-shake 0.5s ease-in-out;
+}
+@keyframes chat-input-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+}
+
+/* Base: same as FashionInsiderIL */
+* {
+  box-sizing: border-box;
+}
+
+/* Buttons with black text: use white for better recognition */
+button.text-black,
+a.text-black,
+button.bg-fi-accent,
+a.bg-fi-accent {
+  color: #fff !important;
+}
+
+/* Tooltips: handled by global JS tooltip so they appear above all UI (header, ticker, etc.) */
+[data-tooltip] {
+  position: relative;
+}
+
+/* Global tooltip (injected/positioned by JS) – always on top, never clipped */
+.global-tooltip {
+  position: fixed;
+  z-index: 99999;
+  pointer-events: none;
+  padding: 8px 12px;
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6edf3;
+  white-space: nowrap;
+  max-width: 280px;
+  white-space: normal;
+  line-height: 1.35;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+}
+
+.global-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Sell Item modal: luxury toggle (No / Yes) */
+.sell-item-toggle-track {
+  transition: background-color 0.2s ease;
+}
+#sell-item-luxury:checked ~ .sell-item-toggle-track {
+  background-color: var(--accent);
+}
+.sell-item-toggle-thumb {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 9999px;
+  transition: transform 0.2s ease;
+}
+#sell-item-luxury:checked ~ .sell-item-toggle-track .sell-item-toggle-thumb {
+  transform: translateY(-50%) translateX(22px);
+}
+
+/* Sell Item modal: condition dropdown – dark background for options */
+.sell-item-condition-select,
+.sell-item-condition-select option {
+  background-color: #1a1a1a !important;
+  color: #e6edf3 !important;
+}
+.sell-item-condition-select option:hover,
+.sell-item-condition-select option:focus {
+  background-color: #262626 !important;
+}
+
+body {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%) !important;
+  background-attachment: fixed !important;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', Oxygen, Ubuntu, Cantarell, sans-serif !important;
+  color: white !important;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(88, 166, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0, 255, 0, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glassmorphism (FashionInsiderIL) */
+.glass-card,
+.bg-card {
+  background: rgba(22, 27, 34, 0.7) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Sidebar: glass style */
+#sidebar {
+  background: rgba(22, 27, 34, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Header: glass style */
+body header[class*="fixed"] {
+  background: rgba(22, 27, 34, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Main content area above overlay */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Accent buttons – FashionInsiderIL glass-btn / primary CTA look */
+button.bg-fi-accent,
+a.bg-fi-accent {
+  background: rgba(88, 166, 255, 0.35) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(88, 166, 255, 0.45) !important;
+  transition: all 0.3s ease;
+}
+
+button.bg-fi-accent:hover,
+a.bg-fi-accent:hover {
+  background: rgba(88, 166, 255, 0.5) !important;
+  border-color: rgba(88, 166, 255, 0.6) !important;
+  box-shadow: 0 0 20px rgba(88, 166, 255, 0.35);
+}
+
+/* Success (green) buttons */
+.bg-fi-success,
+button.bg-fi-success {
+  background: var(--success) !important;
+  border: 1px solid rgba(46, 160, 67, 0.5);
+  transition: all 0.3s ease;
+}
+
+.bg-fi-success:hover,
+button.bg-fi-success:hover {
+  background: var(--success-hover) !important;
+  box-shadow: 0 0 16px rgba(46, 160, 67, 0.4);
+}
+
+/* Nav links – match FashionInsiderIL */
+.nav-link:hover,
+.header-nav:hover {
+  color: var(--accent) !important;
+}
+
+.header-nav.text-fi-accent {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Inputs and search – same as FashionInsiderIL calc-input */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="number"] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  outline: none !important;
+  border-color: rgba(88, 166, 255, 0.5) !important;
+  box-shadow: 0 0 20px rgba(88, 166, 255, 0.2);
+}
+
+/* Cards hover – subtle glow like FashionInsiderIL item-card */
+.bg-card:hover,
+.glass-card:hover {
+  border-color: rgba(88, 166, 255, 0.35) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Modal – dark glass like FashionInsiderIL payment/terminal */
+#credits-modal div.max-w-3xl {
+  background: rgba(13, 17, 23, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(88, 166, 255, 0.08);
+}
+
+#credits-modal div.max-w-3xl.border-2 {
+  border-color: rgba(88, 166, 255, 0.45) !important;
+}
+
+/* Credits package cards in modal */
+.credits-package {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.3s ease;
+}
+
+.credits-package:hover {
+  border-color: rgba(88, 166, 255, 0.4) !important;
+}
+
+.credits-package.border-2.border-fi-accent {
+  border-color: rgba(88, 166, 255, 0.5) !important;
+  background: rgba(88, 166, 255, 0.08) !important;
+}
+
+/* Table (Price List) – match FashionInsiderIL table styling */
+table thead {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-gray) !important;
+}
+
+table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Price list detail card (View Details hover card) */
+.price-list-detail-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+}
+.price-list-detail-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.price-list-detail-yaxis {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #8b949e;
+}
+#price-list-detail-card-wrap .price-list-detail-chart .chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+#price-list-detail-card-wrap .price-list-detail-chart .chart-area {
+  fill: rgba(88, 166, 255, 0.15);
+}
+#price-list-detail-card-wrap .price-list-detail-chart .chart-line {
+  stroke: #58a6ff;
+}
+
+/* Trend / success-red text */
+.text-fi-success {
+  color: var(--success) !important;
+}
+
+.text-red-400,
+.text-red-500 {
+  color: #f85149 !important;
+}
+
+/* Messages section panels */
+#messages-section .bg-card,
+#messages-section .bg-\[\#0d0d0d\] {
+  background: rgba(22, 27, 34, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* Sneaker grid cards (dynamically generated) – ensure they use glass */
+#sneaker-grid .bg-card {
+  background: rgba(22, 27, 34, 0.7) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+#sneaker-grid .bg-card:hover {
+  border-color: rgba(88, 166, 255, 0.4) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Mini price graph on product cards */
+.mini-price-graph {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.mini-price-graph .price-bar {
+  flex: 1;
+  min-width: 4px;
+  background: linear-gradient(180deg, #58a6ff 0%, rgba(88, 166, 255, 0.5) 100%);
+  border-radius: 2px;
+  transition: height 0.3s ease;
+}
+
+/* Product card: image fills box without padding/gaps (preview accurately) */
+.product-card-img-wrap {
+  overflow: hidden;
+  padding: 0;
+  background: #161b22;
+}
+
+.product-card-img {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  object-fit: cover;
+  object-position: center center;
+  width: 100%;
+  height: 100%;
+}
+
+.product-card:hover .product-card-img {
+  transform: scale(1.08) translateY(-8px);
+}
+
+/* Make image area clickable (cursor) */
+.product-card-img-wrap {
+  cursor: pointer;
+}
+
+/* ========== Product detail popover (TradingView-style) ========== */
+.product-detail-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 20px 20px;
+  pointer-events: none;
+}
+
+.product-detail-popover.active {
+  display: flex;
+  pointer-events: auto;
+}
+
+.product-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.product-detail-popover.active .product-detail-backdrop {
+  opacity: 1;
+}
+
+.product-detail-panel {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 100px);
+  background: rgba(13, 17, 23, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  pointer-events: auto;
+}
+
+.product-detail-popover.active .product-detail-panel {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.product-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.product-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-detail-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: center;
+  background: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.product-detail-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.product-detail-brand {
+  margin: 4px 0 0 0;
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.product-detail-price-row {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.product-detail-range {
+  color: #8b949e;
+}
+
+.product-detail-cr {
+  color: #58a6ff;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
+.product-detail-close {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  margin: -4px -4px 0 0;
+  transition: color 0.2s;
+}
+
+.product-detail-close:hover {
+  color: #fff;
+}
+
+.product-detail-chart-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.product-detail-tab {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8b949e;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+  font-family: inherit;
+}
+
+.product-detail-tab:hover {
+  color: #c9d1d9;
+}
+
+.product-detail-tab.active {
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.12);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.product-detail-chart-wrap {
+  position: relative;
+  padding: 16px 20px 8px 12px;
+  min-height: 220px;
+  flex: 1;
+}
+
+.product-detail-chart {
+  width: 100%;
+  height: 220px;
+  position: relative;
+}
+
+.product-detail-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.product-detail-yaxis {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  bottom: 28px;
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #8b949e;
+  text-align: right;
+  pointer-events: none;
+}
+
+.product-detail-xaxis {
+  padding: 6px 20px 16px 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #8b949e;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 0.5;
+}
+
+.chart-area {
+  transition: opacity 0.2s;
+}
+
+.chart-line {
+  filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.4));
+}
+
+/* ========== Active Trade Status (Amazon-style stepper) ========== */
+.active-trade-status.hidden {
+  display: none !important;
+}
+
+.active-trade-status {
+  display: block;
+}
+
+.trade-stepper {
+  position: relative;
+}
+
+.trade-step-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #8b949e;
+  transition: all 0.3s ease;
+}
+
+.trade-step.active .trade-step-circle {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: #58a6ff;
+  color: #58a6ff;
+  animation: trade-step-pulse 1.5s ease-in-out infinite;
+}
+
+.trade-step.completed .trade-step-circle {
+  background: rgba(46, 160, 67, 0.25);
+  border-color: #2ea043;
+  color: #2ea043;
+}
+
+.trade-step-label {
+  color: #8b949e;
+  transition: color 0.3s;
+}
+
+.trade-step.active .trade-step-label {
+  color: #58a6ff;
+}
+
+.trade-step.completed .trade-step-label {
+  color: #2ea043;
+}
+
+@keyframes trade-step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(88, 166, 255, 0); }
+}
+
+.trade-step-line {
+  flex: 1;
+  height: 4px;
+  min-width: 24px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  transition: background 0.4s ease;
+}
+
+.trade-step-line.filled {
+  background: #2ea043;
+}
+
+/* Confetti container */
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti-fall 3s ease-out forwards;
+  top: -10px;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}

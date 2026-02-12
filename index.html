@@ -1,0 +1,3181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fashion Insider – Trading Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS via CDN for utility-first styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'app-bg': '#0d1117',
+            'card': 'rgba(22, 27, 34, 0.7)',
+            'card-hover': '#1e1f24',
+            'fi-accent': '#58a6ff',
+            'fi-accent-hover': '#79b8ff',
+            'fi-success': '#2ea043',
+            'fi-success-hover': '#238636',
+            'fi-muted': '#8b949e',
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen text-white antialiased bg-app-bg font-sans">
+  <div id="global-tooltip" class="global-tooltip" aria-hidden="true" role="tooltip"></div>
+
+  <!-- =============================================================================
+       LIVE ACTIVITY TICKER (stock market style) – very top of page
+       Fetches random users, assigns random action + product, infinite scroll.
+       ============================================================================= -->
+  <div id="activity-ticker" class="activity-ticker fixed top-0 left-0 right-0 h-10 bg-[#0a0a0c] border-b border-white/10 z-[100] overflow-hidden flex items-center">
+    <div class="activity-ticker-label shrink-0 px-4 py-1 bg-fi-accent/20 text-fi-accent text-xs font-bold uppercase tracking-wider border-r border-white/10 h-full flex items-center">Live</div>
+    <div class="activity-ticker-track flex-1 overflow-hidden h-full flex items-center">
+      <div id="activity-ticker-inner" class="activity-ticker-inner flex items-center gap-8 h-full py-1">
+        <!-- Filled by JS: [img] 🇺🇸 Name just bought Nike Dunk Low... -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Lucky Wheel Modal -->
+  <div id="lucky-wheel-modal" class="fixed inset-0 z-[105] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" id="lucky-wheel-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="lucky-wheel-panel relative w-full max-w-lg">
+        <div class="p-5 pb-2">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-white">Daily Lucky Wheel</h2>
+            <button type="button" id="lucky-wheel-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+          </div>
+          <p id="lucky-wheel-countdown" class="hidden text-center text-amber-400 text-sm font-medium py-2">Next spin in: <span id="lucky-wheel-timer">00:00:00</span></p>
+        </div>
+        <div class="relative flex justify-center items-start">
+          <div class="lucky-wheel-pointer absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-10 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[28px] border-t-amber-400 drop-shadow-lg" aria-hidden="true"></div>
+          <div id="lucky-wheel-wheel" class="lucky-wheel-wheel relative w-72 h-72 rounded-full overflow-hidden border-4 border-amber-400 shadow-2xl">
+            <div id="lucky-wheel-segments" class="lucky-wheel-segments absolute inset-0 rounded-full"></div>
+            <div id="lucky-wheel-labels" class="lucky-wheel-labels absolute inset-0 pointer-events-none"></div>
+            <div class="lucky-wheel-center absolute inset-0 flex items-center justify-center">
+              <div class="w-16 h-16 rounded-full bg-[#1a1a1a] border-4 border-amber-400 flex items-center justify-center text-amber-400 font-bold text-xs">SPIN</div>
+            </div>
+          </div>
+        </div>
+        <div class="p-5 pt-4 text-center">
+          <button type="button" id="lucky-wheel-spin-btn" class="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-lg shadow-lg hover:from-amber-400 hover:to-amber-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-amber-500">SPIN THE WHEEL</button>
+        </div>
+        <div id="lucky-wheel-result-overlay" class="lucky-wheel-result-overlay hidden absolute inset-0 bg-black/90 rounded-2xl flex flex-col items-center justify-center p-6 z-20">
+          <p id="lucky-wheel-result-text" class="text-2xl font-bold text-center text-white mb-2"></p>
+          <p id="lucky-wheel-result-sub" class="text-gray-400 text-sm text-center"></p>
+          <button type="button" id="lucky-wheel-result-close" class="mt-6 px-8 py-3 rounded-xl bg-fi-accent text-black font-bold">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity detail modal: click a ticker item to see trade details -->
+  <div id="activity-detail-modal" class="fixed inset-0 z-[110] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/60" id="activity-detail-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div id="activity-detail-panel" class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-white">Activity details</h3>
+            <button type="button" id="activity-detail-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+          </div>
+          <div id="activity-detail-body" class="flex flex-col gap-4">
+            <!-- Filled by JS: user row + action + price or shoes -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================================================
+       FIXED LAYOUT: SIDEBAR (LEFT)
+       Always visible. Contains user profile and optional nav.
+       ============================================================================= -->
+  <aside id="sidebar" class="fixed left-0 top-10 bottom-0 w-56 bg-[#0a0a0c] border-r border-white/5 flex flex-col z-30">
+    <div class="p-5">
+      <span class="text-lg font-bold text-white">Fashion Insider</span>
+    </div>
+    <!-- User profile block (click to open profile & settings) -->
+    <div class="px-4 py-6 border-t border-white/5 cursor-pointer hover:bg-white/5 transition-colors rounded-lg mx-2" id="user-profile-btn" role="button" tabindex="0" data-tooltip="Open profile and settings">
+      <div class="flex flex-col items-center text-center">
+        <div class="relative inline-block mb-2">
+          <img id="display-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" class="w-16 h-16 rounded-full object-cover bg-fi-accent display-avatar" />
+        </div>
+        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+          <span id="display-username" class="font-semibold text-white">Idan</span>
+          <span id="pro-crown-sidebar" class="pro-crown hidden" title="PRO Member" aria-hidden="true">👑</span>
+          <span id="verified-checkmark-sidebar" class="verified-badge hidden" title="Verified" aria-label="Verified"><svg class="verified-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+        </div>
+        <span id="display-location" class="block mt-0.5 text-gray-500 text-xs"></span>
+        <div id="verified-badge-sidebar-block" class="hidden flex items-center gap-1 mt-2 text-fi-accent text-xs font-semibold">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <span>ID VERIFIED</span>
+        </div>
+      </div>
+    </div>
+    <!-- Optional: Section quick-nav in sidebar (for learning: same as header nav) -->
+    <nav class="mt-auto px-3 pb-6 space-y-1 text-sm text-gray-400">
+      <button type="button" data-section="dashboard-section" class="nav-link block w-full text-left py-2 px-3 rounded hover:bg-white/5 hover:text-white" data-tooltip="View dashboard and marketplace">Dashboard</button>
+      <button type="button" data-section="community-section" class="nav-link block w-full text-left py-2 px-3 rounded hover:bg-white/5 hover:text-white" data-tooltip="Browse posts and trading discussions">Community</button>
+      <button type="button" data-section="price-list-section" class="nav-link block w-full text-left py-2 px-3 rounded hover:bg-white/5 hover:text-white" data-tooltip="See all items with price ranges">Price List</button>
+      <button type="button" data-section="trades-section" class="nav-link block w-full text-left py-2 px-3 rounded hover:bg-white/5 hover:text-white" data-tooltip="Manage your offers and listings">My Trades</button>
+      <button type="button" data-section="messages-section" class="nav-link block w-full text-left py-2 px-3 rounded hover:bg-white/5 hover:text-white" data-tooltip="Open channels and messages">Messages</button>
+      <button type="button" id="lucky-wheel-fab" class="lucky-wheel-fab nav-link block w-full text-left py-2 px-3 rounded hover:bg-amber-500/10 hover:text-amber-400 flex items-center gap-2 text-amber-400/90" data-tooltip="Spin the wheel once per day!" aria-label="Try your luck">
+        <span class="lucky-wheel-fab-icon text-lg">🎡</span>
+        <span class="lucky-wheel-fab-text">Try your luck</span>
+      </button>
+      <button type="button" id="btn-upgrade-pro-sidebar" class="btn-upgrade-pro nav-link block w-full text-left py-2.5 px-3 rounded flex items-center justify-center gap-2 font-semibold text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits" aria-label="Upgrade to PRO">UPGRADE TO PRO 👑</button>
+    </nav>
+  </aside>
+
+  <!-- =============================================================================
+       FIXED LAYOUT: TOP HEADER
+       Always visible. Contains logo, main nav, and "Buy Credits" (TOP UP) button.
+       ============================================================================= -->
+  <header class="fixed top-10 left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-6 z-20">
+    <div class="flex items-center gap-8">
+      <span class="text-white font-bold text-lg">Fashion Insider</span>
+      <!-- Main nav: these links control which SECTION is visible (see JavaScript) -->
+      <nav class="flex items-center gap-6 text-sm">
+        <button type="button" data-section="dashboard-section" class="header-nav text-fi-accent border-b-2 border-fi-accent pb-0.5" data-tooltip="View dashboard and marketplace">Dashboard</button>
+        <button type="button" data-section="community-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Browse posts and trading discussions">Community</button>
+        <button type="button" data-section="price-list-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="See all items with price ranges and trends">Price List</button>
+        <button type="button" data-section="trades-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Manage your offers and listings">My Trades</button>
+        <button type="button" data-section="messages-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Open channels and direct messages">Messages</button>
+      </nav>
+    </div>
+    <div class="flex items-center gap-3">
+      <button type="button" id="btn-upgrade-pro-header" class="btn-upgrade-pro px-4 py-2 rounded-lg font-semibold text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits">UPGRADE TO PRO 👑</button>
+      <button type="button" id="btn-start-trade" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Open trade screen to offer items or credits">Start Trade</button>
+      <button type="button" id="btn-get-verified" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Verify your ID to get verified badge">Get Verified</button>
+      <div class="flex items-center gap-2">
+        <span id="pro-crown-header" class="pro-crown hidden text-lg" title="PRO Member" aria-hidden="true">👑</span>
+        <span id="verified-checkmark-header" class="verified-badge hidden" title="Verified" aria-label="Verified"><svg class="verified-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+        <div id="header-profile-icon" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center ps-open-profile cursor-pointer hover:bg-white/15 transition-colors display-avatar" data-tooltip="Open profile and settings" role="button" tabindex="0" title="Open profile and settings">
+        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+        </div>
+      </div>
+      <!-- BUY CREDITS / TOP UP: This button opens the Credits Shop modal (id="credits-modal") -->
+      <div class="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
+        <div class="text-xs text-gray-400">BALANCE</div>
+        <span id="display-currency">$</span><span id="header-balance" class="text-white font-semibold">5,450 CR</span>
+        <button type="button" id="btn-top-up" class="px-4 py-2 rounded-lg bg-fi-success text-white text-sm font-bold hover:bg-fi-success-hover transition-colors" data-tooltip="Buy credits to use for trades">TOP UP</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =============================================================================
+       MAIN CONTENT AREA
+       Only one section is visible at a time. Default: dashboard-section.
+       ============================================================================= -->
+  <main class="pt-24 pl-56 min-h-screen">
+    <div class="p-6">
+
+      <!-- **********************************************************************
+           SECTION: DASHBOARD (id="dashboard-section")
+           This is the DEFAULT visible section. Contains stats cards and the
+           "Sneaker Grid" (Premium Marketplace product cards).
+           ********************************************************************** -->
+      <section id="dashboard-section" class="space-y-6">
+        <!-- Stats row -->
+        <div class="grid grid-cols-4 gap-4">
+          <div class="bg-card rounded-xl p-5 border border-white/5">
+            <div class="text-xs text-gray-400 uppercase tracking-wider">Active Listings</div>
+            <div class="text-2xl font-bold text-white mt-1">248</div>
+          </div>
+          <div class="bg-card rounded-xl p-5 border border-white/5">
+            <div class="text-xs text-gray-400 uppercase tracking-wider">Avg. Price</div>
+            <div class="text-2xl font-bold text-white mt-1">3,450 CR</div>
+          </div>
+          <div class="bg-card rounded-xl p-5 border border-white/5">
+            <div class="text-xs text-gray-400 uppercase tracking-wider">Market Trend</div>
+            <div class="flex items-center gap-1 mt-1 text-fi-success text-xl font-bold">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+              +12.3%
+            </div>
+          </div>
+          <div class="bg-card rounded-xl p-5 border border-white/5 cursor-pointer hover:border-amber-500/30 transition-colors" id="safe-zones-card" role="button" tabindex="0" data-tooltip="View safe meeting points near you">
+            <div class="text-xs text-gray-400 uppercase tracking-wider">Safe Zones</div>
+            <div class="text-2xl font-bold text-white mt-1"><span id="safe-zones-count">8</span> Active</div>
+          </div>
+        </div>
+
+        <!-- Active Trade Status (Amazon-style) - visible only when there is an active trade -->
+        <div id="active-trade-status" class="active-trade-status hidden">
+          <div class="bg-card rounded-xl border border-white/10 p-5">
+            <h3 class="text-lg font-bold text-white mb-1">Active Trade Status</h3>
+            <p id="active-trade-product-name" class="text-gray-400 text-sm mb-4"></p>
+            <div class="trade-stepper flex items-center justify-between max-w-2xl mx-auto">
+              <div class="trade-step flex flex-col items-center" data-step="1">
+                <div class="trade-step-circle flex items-center justify-center">
+                  <svg class="trade-step-icon w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                </div>
+                <span class="trade-step-label mt-2 text-xs font-medium">Offer Sent</span>
+              </div>
+              <div class="trade-step-line" data-after="1"></div>
+              <div class="trade-step flex flex-col items-center" data-step="2">
+                <div class="trade-step-circle flex items-center justify-center">
+                  <svg class="trade-step-icon w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+                </div>
+                <span class="trade-step-label mt-2 text-xs font-medium">Authentication</span>
+              </div>
+              <div class="trade-step-line" data-after="2"></div>
+              <div class="trade-step flex flex-col items-center" data-step="3">
+                <div class="trade-step-circle flex items-center justify-center">
+                  <svg class="trade-step-icon w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                </div>
+                <span class="trade-step-label mt-2 text-xs font-medium">Verified</span>
+              </div>
+              <div class="trade-step-line" data-after="3"></div>
+              <div class="trade-step flex flex-col items-center" data-step="4">
+                <div class="trade-step-circle flex items-center justify-center">
+                  <svg class="trade-step-icon w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/><path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z"/></svg>
+                </div>
+                <span class="trade-step-label mt-2 text-xs font-medium">Shipped</span>
+              </div>
+            </div>
+            <div id="active-trade-safe-zones-wrap" class="hidden mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5">
+              <h4 class="text-amber-400 font-semibold text-sm mb-2">Suggested safe meeting points</h4>
+              <p class="text-gray-400 text-xs mb-3">Choose a public place to meet. We recommend police stations or busy malls.</p>
+              <button type="button" id="active-trade-choose-meeting-btn" class="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-sm font-medium hover:bg-amber-500/30 transition-colors" data-tooltip="Open safe zones and send a meeting point to chat">Choose meeting point</button>
+            </div>
+            <div id="active-trade-completed-msg" class="hidden mt-4 text-center">
+              <p class="text-fi-success font-bold text-lg">Trade Completed!</p>
+              <button type="button" id="active-trade-dismiss" class="mt-2 px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/15 transition-colors">Dismiss</button>
+            </div>
+          </div>
+        </div>
+        <div id="confetti-container" class="confetti-container pointer-events-none" aria-hidden="true"></div>
+
+        <!-- Dashboard tabs: Premium Marketplace | My Closet -->
+        <div class="flex items-center gap-2 border-b border-white/10 pb-2 mb-4">
+          <button type="button" id="dashboard-tab-marketplace" class="dashboard-tab px-4 py-2 rounded-lg font-semibold text-sm bg-fi-accent text-black" data-tab="marketplace" data-tooltip="Browse marketplace">Premium Marketplace</button>
+          <button type="button" id="dashboard-tab-closet" class="dashboard-tab px-4 py-2 rounded-lg font-semibold text-sm text-gray-400 hover:bg-white/5 hover:text-white" data-tab="closet" data-tooltip="Your uploaded items">My Closet</button>
+        </div>
+        <div id="dashboard-marketplace-panel" class="dashboard-panel">
+          <h2 class="text-2xl font-bold text-white">Premium Marketplace</h2>
+          <p class="text-gray-400 text-sm mt-1">Verified sellers • Secure transactions • Safe meetups</p>
+          <div id="sneaker-grid" class="grid grid-cols-4 gap-4 mt-6"></div>
+        </div>
+        <div id="dashboard-closet-panel" class="dashboard-panel hidden">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 class="text-2xl font-bold text-white">My Closet</h2>
+              <p class="text-gray-400 text-sm mt-1">Items you've listed for sale. Luxury items are verified before going live.</p>
+            </div>
+            <button type="button" id="sell-item-btn-my-closet" class="sell-item-trigger flex items-center gap-2 px-5 py-2.5 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors shrink-0" data-tooltip="Sell an item">
+              <span class="text-xl font-light leading-none">+</span>
+              <span>Sell item</span>
+            </button>
+          </div>
+          <div id="my-closet-grid" class="grid grid-cols-4 gap-4 mt-6"></div>
+          <div id="my-closet-empty" class="hidden text-center py-12 text-gray-500">
+            <p class="text-lg font-medium">No items yet</p>
+            <p class="text-sm mt-1">Tap the <span class="inline-flex w-8 h-8 rounded-full bg-fi-accent text-black items-center justify-center text-lg">+</span> button to sell an item.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- **********************************************************************
+           PRODUCT DETAIL POPOVER (TradingView-style price graph)
+           Opens when clicking a product image on the dashboard.
+           ********************************************************************** -->
+      <div id="product-detail-popover" class="product-detail-popover hidden" aria-hidden="true">
+        <div class="product-detail-backdrop" id="product-detail-backdrop"></div>
+        <div class="product-detail-panel" id="product-detail-panel">
+          <div class="product-detail-header">
+            <div class="product-detail-title-row">
+              <img id="product-detail-thumb" src="" alt="" class="product-detail-thumb" />
+              <div>
+                <h3 id="product-detail-name" class="product-detail-name"></h3>
+                <p id="product-detail-brand" class="product-detail-brand"></p>
+                <div class="product-detail-price-row">
+                  <span id="product-detail-range" class="product-detail-range"></span>
+                  <span id="product-detail-cr" class="product-detail-cr"></span>
+                </div>
+              </div>
+            </div>
+            <button type="button" id="product-detail-close" class="product-detail-close" aria-label="Close" data-tooltip="Close price chart">&times;</button>
+          </div>
+          <div class="product-detail-chart-tabs">
+            <button type="button" class="product-detail-tab active" data-range="7" data-tooltip="Last 7 days">7D</button>
+            <button type="button" class="product-detail-tab" data-range="14" data-tooltip="Last 14 days">14D</button>
+            <button type="button" class="product-detail-tab" data-range="30" data-tooltip="Last month">1M</button>
+          </div>
+          <div class="product-detail-chart-wrap">
+            <div id="product-detail-chart" class="product-detail-chart"></div>
+            <div id="product-detail-yaxis" class="product-detail-yaxis"></div>
+          </div>
+          <div id="product-detail-xaxis" class="product-detail-xaxis"></div>
+        </div>
+      </div>
+
+      <!-- **********************************************************************
+           SECTION: COMMUNITY (id="community-section")
+           Feed of posts + "What are you looking for?" + Active Conversations &
+           Trending Posts sidebar.
+           ********************************************************************** -->
+      <section id="community-section" class="hidden">
+        <div class="flex gap-6">
+          <div class="flex-1 space-y-4">
+            <div class="bg-card rounded-xl p-4 border border-white/5 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-white font-bold text-sm">YO</div>
+              <input type="text" placeholder="What are you looking for?" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent" />
+              <button type="button" id="community-create-post-btn" class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black text-xl font-light hover:bg-fi-accent-hover transition-colors" data-tooltip="Post what you're looking for – add items from catalog and write your message">+</button>
+            </div>
+            <!-- Post cards (new posts prepended by JS) -->
+            <div id="community-feed" class="space-y-4">
+            <div class="bg-card rounded-xl p-5 border border-white/5">
+              <div class="flex gap-3">
+                <div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black font-bold text-sm shrink-0">SK</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-white">SneakerKing</span>
+                    <span class="text-gray-500 text-sm">2 hours ago</span>
+                  </div>
+                  <p class="text-gray-300 text-sm mt-2">Looking to trade my Chicago J1s for Bred colorway + cash. Hit me up if interested!</p>
+                  <div class="flex gap-2 mt-3 flex-wrap">
+                    <div class="rounded-lg overflow-hidden border border-white/10 w-20 h-20 bg-gray-700 flex items-center justify-center text-2xl">👟</div>
+                  </div>
+                  <div class="text-gray-500 text-xs mt-2">Nike — Air Jordan 1 'Chicago'</div>
+                  <div class="flex items-center justify-between mt-3">
+                    <span class="text-gray-500 text-sm">2 interested</span>
+                    <button type="button" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Send interest to the seller; they can message you">I'm Interested</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-card rounded-xl p-5 border border-white/5">
+              <div class="flex gap-3">
+                <div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black font-bold text-sm shrink-0">FP</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-white">FashionPro</span>
+                    <span class="text-gray-500 text-sm">5 hours ago</span>
+                  </div>
+                  <p class="text-gray-300 text-sm mt-2">WTB: Yeezy 350 V2 in any color. Size 10. Have Supreme hoodie to trade or can pay cash.</p>
+                  <div class="flex gap-2 mt-3 flex-wrap">
+                    <div class="rounded-lg overflow-hidden border border-white/10 w-20 h-20 bg-gray-700 flex items-center justify-center text-2xl">👟</div>
+                    <div class="rounded-lg overflow-hidden border border-white/10 w-20 h-20 bg-gray-700 flex items-center justify-center text-2xl">🧥</div>
+                  </div>
+                  <div class="text-gray-500 text-xs mt-2">Adidas — Yeezy Boost 350 V2 · Supreme — Box Logo H...</div>
+                  <div class="flex items-center justify-between mt-3">
+                    <span class="text-gray-500 text-sm">1 interested</span>
+                    <button type="button" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Send interest to the seller; they can message you">I'm Interested</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-card rounded-xl p-5 border border-white/5">
+              <div class="flex gap-3">
+                <div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black font-bold text-sm shrink-0">HT</div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-white">HypeTrader</span>
+                    <span class="text-gray-500 text-sm">1 day ago</span>
+                  </div>
+                  <p class="text-gray-300 text-sm mt-2">Got Travis Scott J1 Lows for sale. Only looking for serious buyers. DM for price.</p>
+                  <div class="flex gap-2 mt-3 flex-wrap">
+                    <div class="rounded-lg overflow-hidden border border-white/10 w-20 h-20 bg-gray-700 flex items-center justify-center text-2xl">👟</div>
+                  </div>
+                  <div class="text-gray-500 text-xs mt-2">Travis Scott Jordan 1...</div>
+                  <div class="flex items-center justify-between mt-3">
+                    <span class="text-gray-500 text-sm">3 interested</span>
+                    <button type="button" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Send interest to the seller; they can message you">I'm Interested</button>
+                  </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-72 shrink-0 space-y-4">
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+              <h3 class="font-bold text-white mb-3">Active Conversations</h3>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <div class="relative">
+                    <div class="w-9 h-9 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">SN</div>
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-fi-success border-2 border-card"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-medium">SneakerKing</div>
+                    <div class="text-gray-500 text-xs">Click to chat</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <div class="relative">
+                    <div class="w-9 h-9 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">FA</div>
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-fi-success border-2 border-card"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-medium">FashionPro</div>
+                    <div class="text-gray-500 text-xs">Click to chat</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                  <div class="relative">
+                    <div class="w-9 h-9 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">HY</div>
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-fi-success border-2 border-card"></span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-white text-sm font-medium">HypeTrader</div>
+                    <div class="text-gray-500 text-xs">Click to chat</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+              <h3 class="font-bold text-white mb-3">Trending Posts</h3>
+              <p class="text-gray-500 text-xs mb-2">Most sought after:</p>
+              <ul class="space-y-1.5 text-sm text-gray-300">
+                <li>• Jordan 1 'Chicago'</li>
+                <li>• Yeezy 350 V2</li>
+                <li>• Travis Scott collabs</li>
+                <li>• Supreme Box Logos</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- **********************************************************************
+           SECTION: PRICE LIST (id="price-list-section")
+           Search, filters (All/Shoes/Clothing), sort, and item table with
+           Price Range, 24h Change, 7-Day Trend, View Details.
+           ********************************************************************** -->
+      <section id="price-list-section" class="hidden">
+        <p class="text-gray-400 text-sm mb-4">Browse all items with live price tracking and hourly updates.</p>
+        <div class="bg-card rounded-xl border border-white/5 p-5">
+          <div class="flex flex-col sm:flex-row gap-4 mb-4">
+            <div class="relative flex-1">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input type="text" id="price-list-search" placeholder="Search items by name or brand..." class="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent" />
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Show all items">All</button>
+              <button type="button" class="px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm hover:bg-white/10" data-tooltip="Filter to shoes only">Shoes</button>
+              <button type="button" class="px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm hover:bg-white/10" data-tooltip="Filter to clothing only">Clothing</button>
+              <button type="button" class="px-4 py-2 rounded-lg bg-white/5 text-gray-400 text-sm flex items-center gap-1" data-tooltip="Sort list by name or price">
+                Sort by Name
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="text-gray-500 text-sm mb-4">Showing 36 of 36 items</p>
+          <!-- Table -->
+          <div class="overflow-x-auto rounded-lg border border-white/5">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-white/5 text-gray-400 uppercase text-xs">
+                <tr>
+                  <th class="py-3 px-4 font-medium">Item</th>
+                  <th class="py-3 px-4 font-medium">Price Range</th>
+                  <th class="py-3 px-4 font-medium">24h Change</th>
+                  <th class="py-3 px-4 font-medium">7-Day Trend</th>
+                  <th class="py-3 px-4 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="price-list-tbody" class="divide-y divide-white/5">
+                <tr class="hover:bg-white/5">
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl">👟</div>
+                      <div>
+                        <div class="font-medium text-white">Air Jordan 1 Low 'Shadow'</div>
+                        <div class="text-gray-500 text-xs">Nike</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-white">$130 - $250</div>
+                    <div class="text-gray-500 text-xs">Market Range</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="text-red-400 flex items-center gap-1">↓ -$69</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="w-16 h-8 flex items-end gap-0.5">
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:40%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:60%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:30%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:50%"></span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <button type="button" class="px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-tooltip="Open full details and price chart for this item">View Details</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-white/5">
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl">👟</div>
+                      <div>
+                        <div class="font-medium text-white">Air Jordan 1 Retro High OG 'Chicago'</div>
+                        <div class="text-gray-500 text-xs">Nike</div>
+                        <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-red-900/80 text-white text-xs">TRENDING</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-white">$280 - $450</div>
+                    <div class="text-gray-500 text-xs">Market Range</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="text-fi-success flex items-center gap-1">↑ +$145</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="w-16 h-8 flex items-end gap-0.5">
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:30%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:50%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:70%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:90%"></span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <button type="button" class="px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-tooltip="Open full details and price chart for this item">View Details</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-white/5">
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl">👟</div>
+                      <div>
+                        <div class="font-medium text-white">Balenciaga Triple S 'White'</div>
+                        <div class="text-gray-500 text-xs">Balenciaga</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-white">$750 - $1100</div>
+                    <div class="text-gray-500 text-xs">Market Range</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="text-red-400 flex items-center gap-1">↓ -$50</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="w-16 h-8 flex items-end gap-0.5">
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:80%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:50%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:40%"></span>
+                      <span class="w-1 bg-red-500 rounded-sm" style="height:35%"></span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <button type="button" class="px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-tooltip="Open full details and price chart for this item">View Details</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-white/5">
+                  <td class="py-3 px-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center text-xl">🧥</div>
+                      <div>
+                        <div class="font-medium text-white">Essentials Hoodie 'Cream'</div>
+                        <div class="text-gray-500 text-xs">Fear of God</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="text-white">$120 - $200</div>
+                    <div class="text-gray-500 text-xs">Market Range</div>
+                  </td>
+                  <td class="py-3 px-4">
+                    <span class="text-fi-success flex items-center gap-1">↑ +$22</span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <div class="w-16 h-8 flex items-end gap-0.5">
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:40%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:55%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:70%"></span>
+                      <span class="w-1 bg-fi-success rounded-sm" style="height:85%"></span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <button type="button" class="px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-tooltip="Open full details and price chart for this item">View Details</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- **********************************************************************
+           PRICE LIST: Item detail hovering card (View Details)
+           Shows photo, price range, price graph, and variation selector.
+           ********************************************************************** -->
+      <div id="price-list-detail-card-wrap" class="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none hidden" aria-hidden="true">
+        <div id="price-list-detail-backdrop" class="absolute inset-0 bg-black/60 pointer-events-auto" style="cursor: pointer;"></div>
+        <div id="price-list-detail-card" class="price-list-detail-card relative w-full max-w-md bg-card border border-white/10 rounded-xl shadow-2xl overflow-hidden pointer-events-auto max-h-[90vh] flex flex-col">
+          <button type="button" id="price-list-detail-close" class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold transition-colors" aria-label="Close">&times;</button>
+          <div class="p-5 overflow-y-auto">
+            <div class="flex gap-4 mb-4">
+              <div class="w-28 h-28 rounded-lg bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center">
+                <img id="price-list-detail-img" src="" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'">
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 id="price-list-detail-name" class="font-bold text-white text-lg truncate"></h3>
+                <p id="price-list-detail-brand" class="text-gray-400 text-sm"></p>
+                <div class="mt-2">
+                  <div class="text-gray-500 text-xs">Price range (market)</div>
+                  <div id="price-list-detail-range" class="text-white font-mono font-semibold"></div>
+                </div>
+                <div class="mt-1">
+                  <div class="text-gray-500 text-xs">List price</div>
+                  <div id="price-list-detail-cr" class="text-fi-accent font-semibold"></div>
+                </div>
+                <div id="price-list-detail-condition-wrap" class="hidden mt-3">
+                  <label class="text-gray-400 text-xs block mb-1">Condition</label>
+                  <select id="price-list-detail-condition" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent">
+                    <option value="0">New (100%)</option>
+                    <option value="1">Used (−40%)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div id="price-list-detail-variation-wrap" class="hidden mb-4">
+              <label class="text-gray-400 text-xs block mb-2">Variation</label>
+              <select id="price-list-detail-variation" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent"></select>
+            </div>
+            <div class="mb-2">
+              <div class="text-gray-400 text-xs mb-1">Price trend (14 days)</div>
+              <div class="rounded-lg bg-white/5 border border-white/5 p-3 h-32 flex items-end">
+                <div id="price-list-detail-chart" class="price-list-detail-chart flex-1 min-h-0"></div>
+                <div id="price-list-detail-yaxis" class="price-list-detail-yaxis text-gray-500 text-xs shrink-0 ml-1 w-8 flex flex-col justify-between"></div>
+              </div>
+              <div id="price-list-detail-xaxis" class="price-list-detail-xaxis text-gray-500 text-xs mt-1 flex justify-between"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- **********************************************************************
+           SECTION: MY TRADES (id="trades-section")
+           Tabs: Incoming Offers (badge), My Listings, Trade History.
+           Offer cards with Accept / Counter Offer / Decline.
+           ********************************************************************** -->
+      <section id="trades-section" class="hidden">
+        <p class="text-gray-400 text-sm mb-4">Manage your trades, offers, and listings.</p>
+        <div class="bg-card rounded-xl border border-white/5 overflow-hidden">
+          <div class="flex border-b border-white/5">
+            <button type="button" class="trades-tab px-6 py-4 text-sm font-medium text-white border-b-2 border-fi-accent bg-white/5 flex items-center gap-2" data-tooltip="Offers others sent you">Incoming Offers
+              <span class="w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">2</span>
+            </button>
+            <button type="button" class="trades-tab px-6 py-4 text-sm font-medium text-gray-400 hover:text-white" data-tooltip="Items you have listed">My Listings</button>
+            <button type="button" class="trades-tab px-6 py-4 text-sm font-medium text-gray-400 hover:text-white" data-tooltip="Past completed or cancelled trades">Trade History</button>
+          </div>
+          <div class="p-6 space-y-4">
+            <!-- Offer card 1 -->
+            <div class="bg-white/5 rounded-xl p-5 border border-white/5 flex flex-wrap gap-4 justify-between">
+              <div class="flex gap-4 flex-1 min-w-0">
+                <div class="w-12 h-12 rounded-full bg-gray-600 shrink-0"></div>
+                <div>
+                  <div class="font-semibold text-white">SneakerKing</div>
+                  <div class="text-gray-500 text-sm">2 hours ago</div>
+                  <div class="mt-3">
+                    <div class="text-gray-500 text-xs">Item</div>
+                    <div class="text-white font-medium">Air Jordan 1 Retro High OG</div>
+                  </div>
+                  <div class="mt-2">
+                    <div class="text-gray-500 text-xs">Message</div>
+                    <div class="text-gray-400 text-sm">Looking for a quick deal. Can we do $210?</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-2xl font-bold text-white">$210</div>
+                <div class="text-gray-500 text-xs">Offer Price</div>
+              </div>
+              <div class="w-full flex gap-2 pt-2 border-t border-white/5">
+                <button type="button" class="px-4 py-2 rounded-lg bg-fi-success text-white text-sm font-bold hover:bg-fi-success-hover transition-colors" data-tooltip="Accept this offer and complete the trade">Accept Offer</button>
+                <button type="button" class="px-4 py-2 rounded-lg bg-[#21262d] border border-[#30363d] text-gray-300 text-sm font-medium hover:bg-[#30363d] transition-colors" data-tooltip="Propose a different price or items">Counter Offer</button>
+                <button type="button" class="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium" data-tooltip="Decline this offer">Decline</button>
+              </div>
+            </div>
+            <!-- Offer card 2 -->
+            <div class="bg-white/5 rounded-xl p-5 border border-white/5 flex flex-wrap gap-4 justify-between">
+              <div class="flex gap-4 flex-1 min-w-0">
+                <div class="w-12 h-12 rounded-full bg-gray-600 shrink-0"></div>
+                <div>
+                  <div class="font-semibold text-white">FashionPro</div>
+                  <div class="text-gray-500 text-sm">5 hours ago</div>
+                  <div class="mt-3">
+                    <div class="text-gray-500 text-xs">Item</div>
+                    <div class="text-white font-medium">Yeezy Boost 350 V2</div>
+                  </div>
+                  <div class="mt-2">
+                    <div class="text-gray-500 text-xs">Message</div>
+                    <div class="text-gray-400 text-sm">Interested in this pair. Is it still available?</div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-2xl font-bold text-white">$280</div>
+                <div class="text-gray-500 text-xs">Offer Price</div>
+              </div>
+              <div class="w-full flex gap-2 pt-2 border-t border-white/5">
+                <button type="button" class="px-4 py-2 rounded-lg bg-fi-success text-white text-sm font-bold hover:bg-fi-success-hover transition-colors" data-tooltip="Accept this offer and complete the trade">Accept Offer</button>
+                <button type="button" class="px-4 py-2 rounded-lg bg-[#21262d] border border-[#30363d] text-gray-300 text-sm font-medium hover:bg-[#30363d] transition-colors" data-tooltip="Propose a different price or items">Counter Offer</button>
+                <button type="button" class="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium" data-tooltip="Decline this offer">Decline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- **********************************************************************
+           SECTION: MESSAGES (id="messages-section")
+           Left: Channels (TEXT + VOICE). Center: # general chat. Right: Online users.
+           ********************************************************************** -->
+      <section id="messages-section" class="hidden">
+        <div class="flex h-[calc(100vh-8rem)] rounded-xl overflow-hidden border border-white/5">
+          <!-- Left: Channels -->
+          <div class="w-60 bg-card border-r border-white/5 flex flex-col">
+            <div class="p-4 border-b border-white/5">
+              <span class="font-bold text-white">Fashion Insider</span>
+            </div>
+            <div class="flex border-b border-white/5 text-sm">
+              <button type="button" class="flex-1 py-2.5 bg-white/10 text-white font-medium">Channels</button>
+              <button type="button" class="flex-1 py-2.5 text-gray-400 hover:text-white">Direct Messages</button>
+            </div>
+            <div class="p-2">
+              <div class="text-gray-500 uppercase text-xs font-semibold px-2 py-1">Text Channels</div>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg bg-white/10 text-white flex items-center gap-2">
+                <span class="text-gray-400">#</span> general
+              </button>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span class="text-gray-500">#</span> trading-discussion
+              </button>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span class="text-gray-500">#</span> price-alerts
+              </button>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span class="text-gray-500">#</span> sneakers
+              </button>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span class="text-gray-500">#</span> streetwear
+              </button>
+            </div>
+            <div class="p-2 mt-2 border-t border-white/5">
+              <div class="text-gray-500 uppercase text-xs font-semibold px-2 py-1">Voice Channels</div>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span>🔊</span> General Voice
+              </button>
+              <button type="button" class="w-full text-left py-2 px-3 rounded-lg text-gray-400 hover:bg-white/5 flex items-center gap-2">
+                <span>🔊</span> Trading Room
+              </button>
+            </div>
+          </div>
+          <!-- Center: Chat -->
+          <div class="flex-1 flex flex-col bg-[#0d0d0d]">
+            <div class="h-12 px-4 flex items-center justify-between border-b border-white/5">
+              <span class="font-bold text-white"># general</span>
+              <div class="flex items-center gap-2 text-gray-400">
+                <button type="button" class="p-1.5 hover:text-white">📞</button>
+                <button type="button" class="p-1.5 hover:text-white">📹</button>
+                <button type="button" class="p-1.5 hover:text-white">🔍</button>
+                <button type="button" class="p-1.5 hover:text-white">?</button>
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">SK</div>
+                <div>
+                  <span class="font-semibold text-white">SneakerKing</span>
+                  <span class="text-gray-500 text-xs ml-2">10:30 AM</span>
+                  <p class="text-gray-300 text-sm mt-0.5">Anyone interested in trading Jordan 1s?</p>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">FP</div>
+                <div>
+                  <span class="font-semibold text-white">FashionPro</span>
+                  <span class="text-gray-500 text-xs ml-2">10:32 AM</span>
+                  <p class="text-gray-300 text-sm mt-0.5">I have a pair of Chicago colorway. What are you offering?</p>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">HT</div>
+                <div>
+                  <span class="font-semibold text-white">HypeTrader</span>
+                  <span class="text-gray-500 text-xs ml-2">10:35 AM</span>
+                  <p class="text-gray-300 text-sm mt-0.5">That's a good deal! You should check the price graph though</p>
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">SS</div>
+                <div>
+                  <span class="font-semibold text-white">StreetStyle</span>
+                  <span class="text-gray-500 text-xs ml-2">10:36 AM</span>
+                  <p class="text-gray-300 text-sm mt-0.5">Prices have been going up lately. Might want to wait</p>
+                </div>
+              </div>
+            </div>
+            <div class="p-4 border-t border-white/5 flex flex-col gap-2">
+              <div id="chat-toast" class="chat-toast hidden" role="alert"></div>
+              <div class="flex gap-2">
+                <input type="text" id="messages-input" placeholder="Message #general" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent messages-input" />
+                <button type="button" id="messages-send-btn" class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black shrink-0 hover:bg-fi-accent-hover transition-colors" data-tooltip="Send message to channel">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </button>
+              </div>
+            </div>
+          </div>
+          <!-- Right: Online users -->
+          <div class="w-56 bg-card border-l border-white/5 flex flex-col">
+            <div class="p-3 border-b border-white/5 flex items-center gap-2">
+              <span class="text-gray-400 text-sm">Online — 47</span>
+            </div>
+            <div class="p-2 space-y-1 overflow-y-auto">
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
+                <div class="relative">
+                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">SK</div>
+                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-white text-sm">SneakerKing</div>
+                  <div class="text-gray-500 text-xs">Trading</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
+                <div class="relative">
+                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">FP</div>
+                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-white text-sm">FashionPro</div>
+                  <div class="text-gray-500 text-xs">Looking for deals</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
+                <div class="relative">
+                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">HT</div>
+                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-white text-sm">HypeTrader</div>
+                  <div class="text-gray-500 text-xs">Online</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- =============================================================================
+       TRADE MODAL (Rocket League style: catalog + Your offer vs Their offer)
+       ============================================================================= -->
+  <div id="trade-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="trade-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <h2 class="text-lg font-bold text-white">Trade</h2>
+          <button type="button" id="trade-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none" data-tooltip="Close trade screen">&times;</button>
+        </div>
+        <p id="trade-partner-label" class="px-4 py-2 text-gray-400 text-sm border-b border-white/5 flex-shrink-0">New trade – add items from catalog below</p>
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+          <!-- Left: Catalog + search -->
+          <div class="w-72 flex-shrink-0 border-r border-white/10 flex flex-col overflow-hidden">
+            <div class="p-3 border-b border-white/5 flex-shrink-0">
+              <label class="block text-xs text-gray-500 mb-1">Search catalog</label>
+              <input type="text" id="trade-catalog-search" placeholder="Search items..." class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-fi-accent" />
+            </div>
+            <div id="trade-catalog-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+          </div>
+          <!-- Right: Your offer + Their offer -->
+          <div class="flex-1 flex flex-col min-w-0 p-4 gap-4">
+            <div class="flex-1 min-h-0 flex gap-4">
+              <div class="flex-1 rounded-xl border border-fi-accent/40 bg-fi-accent/5 p-4 flex flex-col min-w-0">
+                <h3 class="text-fi-accent font-semibold text-sm mb-2">Your offer</h3>
+                <div id="trade-your-offer" class="flex-1 min-h-[80px] rounded-lg border border-dashed border-white/20 flex flex-wrap content-start gap-2 p-2 overflow-y-auto">Add items from catalog or add credits</div>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <span class="text-xs text-gray-500">Balance: <span id="trade-your-balance" class="text-white font-mono">5,450</span> CR</span>
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="trade-credits-input" min="0" placeholder="CR" class="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-xs font-mono placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-fi-accent" />
+                    <button type="button" id="trade-add-credits-btn" class="px-2 py-1 rounded bg-fi-accent text-white text-xs font-semibold hover:opacity-90" data-tooltip="Add this amount of credits to your offer">Add credits</button>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-1 rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col min-w-0">
+                <h3 class="text-gray-400 font-semibold text-sm mb-2">Their offer</h3>
+                <div id="trade-their-offer" class="flex-1 min-h-[80px] rounded-lg border border-white/10 flex items-center justify-center text-gray-500 text-sm p-2">Select a product on dashboard and click Trade</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-white/10 flex justify-end gap-2 flex-shrink-0">
+          <button type="button" class="px-4 py-2 rounded-lg border border-white/20 text-gray-300 text-sm" id="trade-cancel-btn" data-tooltip="Close without sending">Cancel</button>
+          <button type="button" class="px-4 py-2 rounded-lg bg-fi-success text-white text-sm font-bold" id="trade-send-btn" data-tooltip="Send your trade offer to the other party">Send Trade</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================================================
+       GET VERIFIED MODAL – 3-Step KYC Wizard (ID Upload → Selfie → Success)
+       ============================================================================= -->
+  <!-- Safe Zones modal: real places via Nominatim (police + mall near user location) -->
+  <div id="safe-zones-modal" class="fixed inset-0 z-[55] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="safe-zones-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <h2 class="text-lg font-bold text-white">Safe meeting points</h2>
+          <button type="button" id="safe-zones-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto min-h-0">
+          <div id="safe-zones-spinner" class="flex flex-col items-center justify-center py-12 text-gray-400">
+            <svg class="animate-spin h-10 w-10 text-amber-400 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm">Finding safe places near you…</span>
+          </div>
+          <div id="safe-zones-error" class="hidden py-8 text-center text-gray-400 text-sm"></div>
+          <div id="safe-zones-list" class="hidden space-y-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRO Membership modal: Black & Gold premium pricing -->
+  <div id="pro-modal" class="fixed inset-0 z-[60] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/85 backdrop-blur-sm" id="pro-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="pro-modal-panel w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="pro-modal-header">
+          <h2 class="pro-modal-title">PRO Membership</h2>
+          <button type="button" id="pro-modal-close" class="pro-modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="pro-modal-body">
+          <p class="pro-modal-subtitle">Join the elite. Better fees, priority support, and exclusive perks.</p>
+          <div class="pro-modal-cols">
+            <div class="pro-col pro-col-starter">
+              <div class="pro-col-header">STARTER</div>
+              <div class="pro-col-price">Free</div>
+              <ul class="pro-col-features">
+                <li>10% Transaction Fee</li>
+                <li>Standard Support</li>
+                <li>No Badge</li>
+              </ul>
+            </div>
+            <div class="pro-col pro-col-pro">
+              <div class="pro-col-badge">RECOMMENDED</div>
+              <div class="pro-col-header">PRO</div>
+              <div class="pro-col-price">29.90 ₪<span class="pro-col-period">/mo</span></div>
+              <ul class="pro-col-features">
+                <li>4% Transaction Fee</li>
+                <li>Priority Support</li>
+                <li>Gold Badge 👑</li>
+                <li>Dark Mode Profile</li>
+              </ul>
+            </div>
+          </div>
+          <button type="button" id="pro-modal-subscribe" class="pro-modal-subscribe">SUBSCRIBE NOW</button>
+        </div>
+        <div id="pro-modal-processing" class="pro-modal-overlay hidden">
+          <div class="pro-modal-spinner"></div>
+          <p class="pro-modal-overlay-text">Processing Payment...</p>
+        </div>
+        <div id="pro-modal-success" class="pro-modal-overlay hidden">
+          <p class="pro-modal-success-title">Welcome to the Elite Club! 🥂</p>
+          <p class="pro-modal-success-sub">Your account is now PRO. 500 bonus credits have been added.</p>
+          <button type="button" id="pro-modal-success-close" class="pro-modal-success-btn">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="verify-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="verify-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden relative flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <h2 class="text-lg font-bold text-white">Identity Verification</h2>
+          <button type="button" id="verify-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+          <!-- Step 1: ID Upload -->
+          <div id="verify-step-1" class="verify-step">
+            <p class="text-gray-400 text-sm mb-4">Upload photos of your ID (passport or driver's license).</p>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div class="verify-upload-box relative border-2 border-dashed border-white/20 rounded-xl p-4 min-h-[140px] flex flex-col items-center justify-center cursor-pointer hover:border-fi-accent/50 transition-colors" id="verify-id-front-wrap">
+                <input type="file" id="verify-id-front" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <img id="verify-id-front-preview" src="" alt="" class="hidden w-full h-24 object-contain rounded mb-2" />
+                <span id="verify-id-front-label" class="text-gray-500 text-sm text-center">Front of ID</span>
+                <span id="verify-id-front-check" class="hidden absolute top-2 right-2 w-8 h-8 rounded-full bg-fi-success flex items-center justify-center text-white text-lg">✓</span>
+              </div>
+              <div class="verify-upload-box relative border-2 border-dashed border-white/20 rounded-xl p-4 min-h-[140px] flex flex-col items-center justify-center cursor-pointer hover:border-fi-accent/50 transition-colors" id="verify-id-back-wrap">
+                <input type="file" id="verify-id-back" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <img id="verify-id-back-preview" src="" alt="" class="hidden w-full h-24 object-contain rounded mb-2" />
+                <span id="verify-id-back-label" class="text-gray-500 text-sm text-center">Back of ID</span>
+                <span id="verify-id-back-check" class="hidden absolute top-2 right-2 w-8 h-8 rounded-full bg-fi-success flex items-center justify-center text-white text-lg">✓</span>
+              </div>
+            </div>
+            <button type="button" id="verify-step1-next" class="w-full py-3 rounded-lg bg-fi-accent text-black font-bold text-sm hover:bg-fi-accent-hover transition-colors">Next: Face Verification</button>
+          </div>
+          <!-- Step 2: Selfie / Webcam -->
+          <div id="verify-step-2" class="verify-step hidden">
+            <p class="text-gray-400 text-sm mb-4">Position your face in the frame and take a snapshot.</p>
+            <div class="flex justify-center mb-4">
+              <div class="relative w-64 h-64 rounded-full overflow-hidden border-4 border-white/20 bg-gray-800 flex items-center justify-center verify-video-frame">
+                <video id="verify-webcam-video" autoplay playsinline muted class="w-full h-full object-cover mirror-video" style="transform: scaleX(-1);"></video>
+                <canvas id="verify-webcam-canvas" class="hidden absolute inset-0 w-full h-full object-cover"></canvas>
+                <span id="verify-webcam-placeholder" class="text-gray-500 text-sm">Camera starting…</span>
+              </div>
+            </div>
+            <p id="verify-face-matching" class="hidden text-center text-fi-accent font-medium mb-4">Face Matching…</p>
+            <button type="button" id="verify-take-snapshot" class="w-full py-3 rounded-lg bg-fi-accent text-black font-bold text-sm hover:bg-fi-accent-hover transition-colors">Take Snapshot</button>
+          </div>
+          <!-- Step 3: Processing & Success -->
+          <div id="verify-step-3" class="verify-step hidden text-center py-6">
+            <div id="verify-processing" class="verify-processing">
+              <div class="w-16 h-16 border-4 border-fi-accent/30 border-t-fi-accent rounded-full animate-spin mx-auto mb-4"></div>
+              <p class="text-white font-medium">Verifying against Global Database…</p>
+              <p class="text-gray-500 text-sm mt-1">This may take a few seconds</p>
+            </div>
+            <div id="verify-success" class="hidden">
+              <div class="w-20 h-20 rounded-full bg-fi-success flex items-center justify-center mx-auto mb-4 text-white text-4xl">🎉</div>
+              <p class="text-xl font-bold text-white">Identity Verified Successfully!</p>
+              <p class="text-gray-400 text-sm mt-2">You can now close this window.</p>
+              <button type="button" id="verify-done-btn" class="mt-6 px-8 py-3 rounded-lg bg-fi-success text-white font-bold hover:bg-fi-success-hover transition-colors">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    var VERIFIED_KEY = 'fashionInsider_kyc_verified';
+    var verifyModal = document.getElementById('verify-modal');
+    var step1 = document.getElementById('verify-step-1');
+    var step2 = document.getElementById('verify-step-2');
+    var step3 = document.getElementById('verify-step-3');
+    var idFrontInput = document.getElementById('verify-id-front');
+    var idBackInput = document.getElementById('verify-id-back');
+    var idFrontPreview = document.getElementById('verify-id-front-preview');
+    var idBackPreview = document.getElementById('verify-id-back-preview');
+    var idFrontLabel = document.getElementById('verify-id-front-label');
+    var idBackLabel = document.getElementById('verify-id-back-label');
+    var idFrontCheck = document.getElementById('verify-id-front-check');
+    var idBackCheck = document.getElementById('verify-id-back-check');
+    var step1Next = document.getElementById('verify-step1-next');
+    var videoEl = document.getElementById('verify-webcam-video');
+    var canvasEl = document.getElementById('verify-webcam-canvas');
+    var placeholderEl = document.getElementById('verify-webcam-placeholder');
+    var faceMatchingEl = document.getElementById('verify-face-matching');
+    var takeSnapshotBtn = document.getElementById('verify-take-snapshot');
+    var processingEl = document.getElementById('verify-processing');
+    var successEl = document.getElementById('verify-success');
+    var doneBtn = document.getElementById('verify-done-btn');
+    var verifyCloseBtn = document.getElementById('verify-modal-close');
+    var verifyBackdrop = document.getElementById('verify-modal-backdrop');
+    var stream = null;
+
+    function applyVerifiedUI() {
+      var isVerified = localStorage.getItem(VERIFIED_KEY) === 'true';
+      var sidebarBadge = document.getElementById('verified-checkmark-sidebar');
+      var headerBadge = document.getElementById('verified-checkmark-header');
+      var sidebarBlock = document.getElementById('verified-badge-sidebar-block');
+      var btnGetVerified = document.getElementById('btn-get-verified');
+      if (sidebarBadge) sidebarBadge.classList.toggle('hidden', !isVerified);
+      if (headerBadge) headerBadge.classList.toggle('hidden', !isVerified);
+      if (sidebarBlock) sidebarBlock.classList.toggle('hidden', !isVerified);
+      if (sidebarBlock && !isVerified) sidebarBlock.style.display = 'none';
+      if (sidebarBlock && isVerified) sidebarBlock.style.display = 'flex';
+      if (btnGetVerified) btnGetVerified.style.display = isVerified ? 'none' : '';
+    }
+
+    function stopWebcam() {
+      if (stream) {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        stream = null;
+      }
+      if (videoEl && videoEl.srcObject) videoEl.srcObject = null;
+    }
+
+    function closeVerifyModal() {
+      stopWebcam();
+      if (verifyModal) {
+        verifyModal.classList.add('hidden');
+        verifyModal.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function showStep(n) {
+      if (step1) step1.classList.toggle('hidden', n !== 1);
+      if (step2) step2.classList.toggle('hidden', n !== 2);
+      if (step3) step3.classList.toggle('hidden', n !== 3);
+    }
+
+    function setupFilePreview(input, preview, label, check) {
+      if (!input || !preview) return;
+      input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file || !file.type.match(/^image\//)) return;
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          preview.src = e.target.result;
+          preview.classList.remove('hidden');
+          if (label) label.classList.add('hidden');
+          if (check) check.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.resetVerifyWizard = function () {
+      showStep(1);
+      stopWebcam();
+      if (idFrontInput) idFrontInput.value = '';
+      if (idBackInput) idBackInput.value = '';
+      if (idFrontPreview) { idFrontPreview.src = ''; idFrontPreview.classList.add('hidden'); }
+      if (idBackPreview) { idBackPreview.src = ''; idBackPreview.classList.add('hidden'); }
+      if (idFrontLabel) idFrontLabel.classList.remove('hidden');
+      if (idBackLabel) idBackLabel.classList.remove('hidden');
+      if (idFrontCheck) idFrontCheck.classList.add('hidden');
+      if (idBackCheck) idBackCheck.classList.add('hidden');
+      if (videoEl) { videoEl.classList.add('hidden'); videoEl.srcObject = null; }
+      if (canvasEl) canvasEl.classList.add('hidden');
+      if (placeholderEl) placeholderEl.classList.remove('hidden');
+      if (faceMatchingEl) faceMatchingEl.classList.add('hidden');
+      if (takeSnapshotBtn) takeSnapshotBtn.classList.remove('hidden');
+      if (processingEl) processingEl.classList.remove('hidden');
+      if (successEl) successEl.classList.add('hidden');
+    };
+
+    setupFilePreview(idFrontInput, idFrontPreview, idFrontLabel, idFrontCheck);
+    setupFilePreview(idBackInput, idBackPreview, idBackLabel, idBackCheck);
+
+    if (step1Next) {
+      step1Next.addEventListener('click', function () {
+        showStep(2);
+        placeholderEl.textContent = 'Camera starting…';
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          placeholderEl.textContent = 'Camera not supported';
+          return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+          .then(function (s) {
+            stream = s;
+            if (videoEl) {
+              videoEl.srcObject = s;
+              videoEl.classList.remove('hidden');
+              placeholderEl.classList.add('hidden');
+            }
+          })
+          .catch(function () {
+            placeholderEl.textContent = 'Could not access camera';
+          });
+      });
+    }
+
+    if (takeSnapshotBtn) {
+      takeSnapshotBtn.addEventListener('click', function () {
+        if (!videoEl || !canvasEl || !stream) return;
+        var w = videoEl.videoWidth;
+        var h = videoEl.videoHeight;
+        if (!w || !h) return;
+        var container = videoEl.parentElement;
+        var displayW = container ? container.clientWidth : 256;
+        var displayH = container ? container.clientHeight : 256;
+        canvasEl.width = displayW;
+        canvasEl.height = displayH;
+        var ctx = canvasEl.getContext('2d');
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoEl, -displayW, 0, displayW, displayH);
+        ctx.restore();
+        stopWebcam();
+        videoEl.classList.add('hidden');
+        canvasEl.classList.remove('hidden');
+        canvasEl.style.transform = 'scaleX(-1)';
+        placeholderEl.classList.add('hidden');
+        if (faceMatchingEl) faceMatchingEl.classList.remove('hidden');
+        takeSnapshotBtn.classList.add('hidden');
+        setTimeout(function () {
+          showStep(3);
+          setTimeout(function () {
+            if (processingEl) processingEl.classList.add('hidden');
+            if (successEl) successEl.classList.remove('hidden');
+          }, 4000);
+        }, 2000);
+      });
+    }
+
+    if (doneBtn) {
+      doneBtn.addEventListener('click', function () {
+        localStorage.setItem(VERIFIED_KEY, 'true');
+        applyVerifiedUI();
+        closeVerifyModal();
+      });
+    }
+
+    if (verifyCloseBtn) verifyCloseBtn.addEventListener('click', closeVerifyModal);
+    if (verifyBackdrop) verifyBackdrop.addEventListener('click', closeVerifyModal);
+
+    applyVerifiedUI();
+  })();
+  </script>
+
+  <!-- =============================================================================
+       CREATE POST MODAL (Community – like Facebook Marketplace / Xbox LFG)
+       User writes text and picks items from catalog to attach to the post.
+       ============================================================================= -->
+  <div id="create-post-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="create-post-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <h2 class="text-lg font-bold text-white">Create post</h2>
+          <button type="button" id="create-post-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">What's on your mind?</label>
+            <textarea id="create-post-body" rows="4" placeholder="Describe what you're looking for, what you're selling, or start a discussion..." class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Attach items from catalog</label>
+            <input type="text" id="create-post-catalog-search" placeholder="Search catalog..." class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-fi-accent mb-2" />
+            <div id="create-post-catalog-list" class="max-h-48 overflow-y-auto rounded-lg border border-white/10 p-2 space-y-1"></div>
+          </div>
+          <div id="create-post-selected-wrap" class="hidden">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Selected items</label>
+            <div id="create-post-selected" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-white/10 flex justify-end gap-2 flex-shrink-0">
+          <button type="button" id="create-post-cancel" class="px-4 py-2 rounded-lg border border-white/20 text-gray-300 text-sm hover:bg-white/5">Cancel</button>
+          <button type="button" id="create-post-submit" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover">Post</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================================================
+       SELL ITEM FAB + MODAL (Marketplace – upload your own items)
+       ============================================================================= -->
+  <button type="button" id="sell-item-fab" class="fixed bottom-24 right-24 w-14 h-14 rounded-full bg-fi-accent text-black flex items-center justify-center text-2xl font-light shadow-lg hover:bg-fi-accent-hover transition-colors z-40" aria-label="Sell an item" data-tooltip="Sell an item">+</button>
+
+  <div id="sell-item-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="sell-item-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <h2 id="sell-item-modal-title" class="text-lg font-bold text-white">Sell Item</h2>
+          <button type="button" id="sell-item-close" class="text-gray-400 hover:text-white text-2xl leading-none" aria-label="Close">&times;</button>
+        </div>
+        <form id="sell-item-form" class="p-4 flex-1 overflow-y-auto space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Item Name</label>
+            <input type="text" id="sell-item-name" required placeholder="e.g. Nike Air Jordan 1 Chicago" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Price (₪ ILS)</label>
+            <input type="number" id="sell-item-price" required min="1" step="1" placeholder="0" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Condition</label>
+            <select id="sell-item-condition" class="sell-item-condition-select w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent">
+              <option value="new">New with Tags</option>
+              <option value="like-new">Used - Like New</option>
+              <option value="good">Used - Good</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-300">Is this a Luxury Brand?</label>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="sell-item-luxury" class="sr-only peer" />
+              <div class="sell-item-toggle-track w-11 h-6 bg-white/10 rounded-full peer-checked:bg-fi-accent relative inline-block">
+                <span class="sell-item-toggle-thumb"></span>
+              </div>
+              <span class="ml-2 text-sm text-gray-400">No / Yes</span>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Image</label>
+            <input type="file" id="sell-item-image" accept="image/*" class="hidden" />
+            <div id="sell-item-image-area" class="border border-white/10 rounded-lg p-4 border-dashed flex flex-col items-center justify-center min-h-[140px] cursor-pointer hover:bg-white/5 transition-colors" tabindex="0" role="button">
+              <img id="sell-item-preview" src="" alt="" class="hidden max-h-32 max-w-full object-contain rounded" />
+              <span id="sell-item-image-label" class="text-gray-500 text-sm">Click to upload image</span>
+            </div>
+          </div>
+        </form>
+        <div class="p-4 border-t border-white/10 flex justify-end gap-2 flex-shrink-0">
+          <button type="button" id="sell-item-cancel" class="px-4 py-2 rounded-lg border border-white/20 text-gray-300 text-sm hover:bg-white/5">Cancel</button>
+          <button type="button" id="sell-item-submit" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover"><span id="sell-item-submit-label">List Item</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container for "Verified" notification -->
+  <div id="sell-item-toast" class="fixed bottom-24 right-8 z-50 max-w-sm bg-card border border-fi-success rounded-lg shadow-lg p-4 hidden items-center gap-3" role="alert" style="display: none;">
+    <span class="text-fi-success text-2xl">✅</span>
+    <div>
+      <p class="font-semibold text-white">Item verified!</p>
+      <p id="sell-item-toast-message" class="text-gray-400 text-sm">Your luxury item is now live.</p>
+    </div>
+  </div>
+
+  <!-- =============================================================================
+       CREDITS SHOP MODAL (id="credits-modal")
+       Opened by the "TOP UP" / "Buy Credits" button in the header.
+       Contains: current balance, credit packages grid, payment method, footer.
+       ============================================================================= -->
+  <div id="credits-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="credits-modal-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-[#1a1a1a] border-2 border-fi-accent rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+        <div class="p-6" id="credits-modal-content">
+          <!-- Modal header: title + close button -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-fi-accent/20 flex items-center justify-center">
+                <svg class="w-6 h-6 text-fi-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-white">Credits Shop</h2>
+                <p class="text-gray-400 text-sm">Purchase credits to trade on the platform.</p>
+              </div>
+            </div>
+            <button type="button" id="credits-modal-close" class="text-gray-400 hover:text-white text-2xl leading-none" data-tooltip="Close credits shop">&times;</button>
+          </div>
+          <!-- Current balance bar -->
+          <div class="flex items-center justify-between py-3 px-4 rounded-lg bg-white/5 mb-6">
+            <span class="text-gray-400">Current Balance</span>
+            <div class="flex items-center gap-2">
+              <span id="credits-modal-balance" class="text-fi-success font-bold">5,450 CR</span>
+              <button type="button" id="btn-withdraw" class="px-3 py-1.5 rounded-lg bg-white/10 text-gray-300 text-xs font-medium hover:bg-white/15 transition-colors" data-tooltip="Withdraw credits to your bank">Withdraw to Bank</button>
+            </div>
+          </div>
+          <!-- Credit packages grid (6 packages) -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="credits-package border-2 border-fi-accent rounded-xl p-4 relative bg-white/5 cursor-pointer" data-credits="500">
+              <span class="absolute top-2 right-2 w-6 h-6 rounded-full bg-fi-accent flex items-center justify-center text-black text-sm font-bold">✓</span>
+              <div class="text-2xl font-bold text-white">500</div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="mt-3 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$4.99</div>
+            </div>
+            <div class="credits-package border border-white/10 rounded-xl p-4 relative bg-white/5 cursor-pointer hover:border-fi-accent/50" data-credits="1000">
+              <div class="text-2xl font-bold text-white">1,000</div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="mt-3 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$9.99</div>
+            </div>
+            <div class="credits-package border border-white/10 rounded-xl p-4 relative bg-white/5 cursor-pointer hover:border-fi-accent/50" data-credits="2600">
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-fi-accent/90 text-black text-xs font-bold">POPULAR</span>
+              <div class="text-2xl font-bold text-white">2,500 <span class="text-fi-success text-lg">+100</span></div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="text-fi-success text-xs mt-1">Bonus: +100 CR</div>
+              <div class="mt-2 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$19.99</div>
+              <div class="text-gray-500 text-xs">Total: 2,600 CR</div>
+            </div>
+            <div class="credits-package border border-white/10 rounded-xl p-4 relative bg-white/5 cursor-pointer hover:border-fi-accent/50" data-credits="5500">
+              <div class="text-2xl font-bold text-white">5,000 <span class="text-fi-success text-lg">+500</span></div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="text-fi-success text-xs mt-1">Bonus: +500 CR</div>
+              <div class="mt-2 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$39.99</div>
+              <div class="text-gray-500 text-xs">Total: 5,500 CR</div>
+            </div>
+            <div class="credits-package border border-white/10 rounded-xl p-4 relative bg-white/5 cursor-pointer hover:border-fi-accent/50" data-credits="11500">
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-fi-accent/90 text-black text-xs font-bold">BEST VALUE</span>
+              <div class="text-2xl font-bold text-white">10,000 <span class="text-fi-success text-lg">+1500</span></div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="text-fi-success text-xs mt-1">Bonus: +1500 CR</div>
+              <div class="mt-2 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$74.99</div>
+              <div class="text-gray-500 text-xs">Total: 11,500 CR</div>
+            </div>
+            <div class="credits-package border border-white/10 rounded-xl p-4 relative bg-white/5 cursor-pointer hover:border-fi-accent/50" data-credits="30000">
+              <div class="text-2xl font-bold text-white">25,000 <span class="text-fi-success text-lg">+5000</span></div>
+              <div class="text-gray-400 text-sm">Credits</div>
+              <div class="text-fi-success text-xs mt-1">Bonus: +5000 CR</div>
+              <div class="mt-2 text-gray-500 text-xs uppercase">Price</div>
+              <div class="text-fi-success font-bold text-lg">$149.99</div>
+              <div class="text-gray-500 text-xs">Total: 30,000 CR</div>
+            </div>
+          </div>
+          <!-- Select payment method -->
+          <div class="mb-6">
+            <h3 class="text-white font-semibold flex items-center gap-2 mb-3">
+              Select Payment Method
+              <span class="w-4 h-4 rounded-full border border-gray-500 text-gray-500 text-xs flex items-center justify-center">i</span>
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="border border-white/10 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-fi-accent/50">
+                <div class="w-12 h-8 rounded bg-gray-600 flex items-center justify-center text-xl">💳</div>
+                <div>
+                  <div class="text-white font-medium">Credit/Debit Card</div>
+                  <div class="text-gray-500 text-xs">Instant delivery</div>
+                </div>
+              </div>
+              <div class="border border-white/10 rounded-xl p-4 flex items-center gap-3 cursor-pointer hover:border-fi-accent/50">
+                <div class="text-2xl font-bold text-blue-400">PayPal</div>
+                <div>
+                  <div class="text-white font-medium">PayPal</div>
+                  <div class="text-gray-500 text-xs">Secure & fast</div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 p-3 rounded-lg border border-fi-accent/50 bg-fi-accent/10 flex gap-2">
+              <svg class="w-5 h-5 text-fi-accent shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+              <div>
+                <div class="text-fi-accent font-medium text-sm">Secure Transaction</div>
+                <div class="text-gray-500 text-xs">All payments are encrypted and processed through secure payment gateways. Your financial information is never stored on our servers.</div>
+              </div>
+            </div>
+          </div>
+          <!-- Pay button: triggers fake payment flow (loading → success). Replace with Stripe later. -->
+          <div class="mb-6">
+            <button type="button" id="credits-modal-pay" class="w-full py-3 px-6 rounded-lg bg-fi-success hover:bg-fi-success-hover text-white font-bold text-lg transition-colors" data-tooltip="Confirm payment for selected package">
+              Pay
+            </button>
+          </div>
+          <!-- Footer: Secure Payments, Instant Delivery, No Expiry -->
+          <div class="flex justify-around py-4 border-t border-white/5 text-center">
+            <div>
+              <div class="w-10 h-10 rounded-full border-2 border-fi-success flex items-center justify-center mx-auto text-fi-success mb-1">✓</div>
+              <div class="text-white text-sm font-medium">Secure Payments</div>
+              <div class="text-gray-500 text-xs">256-bit SSL encryption</div>
+            </div>
+            <div>
+              <div class="w-10 h-10 rounded-full border-2 border-fi-success flex items-center justify-center mx-auto text-fi-success mb-1">✓</div>
+              <div class="text-white text-sm font-medium">Instant Delivery</div>
+              <div class="text-gray-500 text-xs">Credits added immediately</div>
+            </div>
+            <div>
+              <div class="w-10 h-10 rounded border-2 border-fi-success flex items-center justify-center mx-auto text-fi-success mb-1 text-lg">−</div>
+              <div class="text-white text-sm font-medium">No Expiry</div>
+              <div class="text-gray-500 text-xs">Credits never expire</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment loading overlay: shown when user clicks Pay (fake processing). -->
+        <div id="credits-modal-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a1a] rounded-xl hidden">
+          <div class="w-14 h-14 border-4 border-fi-success/30 border-t-fi-success rounded-full animate-spin mb-4" aria-hidden="true"></div>
+          <p class="text-white font-medium">Processing payment...</p>
+          <p class="text-gray-400 text-sm mt-1">Please wait</p>
+        </div>
+
+        <!-- Payment success overlay: shown after fake payment completes. -->
+        <div id="credits-modal-success" class="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a1a] rounded-xl hidden p-6">
+          <div class="w-20 h-20 rounded-full bg-fi-success flex items-center justify-center mb-4">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-white">Success!</h3>
+          <p class="text-gray-400 text-sm mt-1 text-center">Your credits have been added. You can close this window.</p>
+          <button type="button" id="credits-modal-success-done" class="mt-6 px-8 py-3 rounded-lg bg-fi-success hover:bg-fi-success-hover text-white font-bold" data-tooltip="Close and return to dashboard">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buy confirmation modal (Buyer Pays: item + 5% or 2% PRO fee) -->
+  <div id="buy-confirm-modal" class="fixed inset-0 z-[52] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="buy-confirm-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="p-5 border-b border-white/10">
+          <h3 class="text-lg font-bold text-white">Confirm purchase</h3>
+        </div>
+        <div class="p-5 space-y-3">
+          <p id="buy-confirm-item-name" class="text-gray-300 text-sm"></p>
+          <div class="flex justify-between text-sm"><span class="text-gray-400">Item Price</span><span id="buy-confirm-item-price" class="text-white font-mono"></span></div>
+          <div class="flex justify-between text-sm"><span class="text-gray-400">Buyer Protection (<span id="buy-confirm-fee-pct"></span>)</span><span id="buy-confirm-fee-amount" class="text-amber-400 font-mono"></span></div>
+          <div class="border-t border-white/10 pt-3 flex justify-between font-semibold"><span class="text-white">Total to Pay</span><span id="buy-confirm-total" class="text-fi-success font-mono"></span></div>
+        </div>
+        <div class="p-5 border-t border-white/10 flex gap-2">
+          <button type="button" id="buy-confirm-cancel" class="flex-1 py-2.5 rounded-lg border border-white/20 text-gray-300 text-sm font-medium">Cancel</button>
+          <button type="button" id="buy-confirm-pay" class="flex-1 py-2.5 rounded-lg bg-fi-success text-white text-sm font-bold">Pay total</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Withdraw to Bank modal (2% processing fee) -->
+  <div id="withdraw-modal" class="fixed inset-0 z-[52] hidden" aria-hidden="true">
+    <div class="absolute inset-0 bg-black/70" id="withdraw-backdrop"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-card border border-white/10 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="p-5 border-b border-white/10">
+          <h3 class="text-lg font-bold text-white">Withdraw to Bank</h3>
+        </div>
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-gray-400 text-sm mb-1">Amount to withdraw (CR)</label>
+            <input type="number" id="withdraw-amount" min="1" step="1" placeholder="e.g. 1000" class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-fi-accent" />
+          </div>
+          <div id="withdraw-breakdown" class="rounded-lg bg-white/5 p-3 text-sm space-y-1 hidden">
+            <div class="flex justify-between text-gray-400"><span>You withdraw</span><span id="withdraw-you-withdraw" class="text-white font-mono"></span></div>
+            <div class="flex justify-between text-gray-400"><span>Processing fee (2%)</span><span id="withdraw-fee" class="text-amber-400 font-mono"></span></div>
+            <div class="flex justify-between font-semibold text-white pt-1 border-t border-white/10"><span>You receive</span><span id="withdraw-you-receive" class="text-fi-success font-mono"></span></div>
+          </div>
+        </div>
+        <div class="p-5 border-t border-white/10 flex gap-2">
+          <button type="button" id="withdraw-cancel" class="flex-1 py-2.5 rounded-lg border border-white/20 text-gray-300 text-sm font-medium">Cancel</button>
+          <button type="button" id="withdraw-confirm" class="flex-1 py-2.5 rounded-lg bg-fi-success text-white text-sm font-bold">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="withdraw-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-3 rounded-lg bg-fi-success text-white text-sm font-medium shadow-lg hidden" role="status">Funds sent to bank (2-3 business days)</div>
+
+  <script src="mock-data.js"></script>
+  <script src="marketData.js"></script>
+  <script type="module" src="marketService.js"></script>
+  <script>
+  (function () {
+    var tip = document.getElementById('global-tooltip');
+    if (!tip) return;
+    var showBelowThreshold = 140;
+    function showTooltip(ev, text) {
+      if (!text) return;
+      tip.textContent = text;
+      tip.style.left = '-9999px';
+      tip.style.top = '-9999px';
+      tip.classList.add('visible');
+      var rect = ev.currentTarget.getBoundingClientRect();
+      var tipRect = tip.getBoundingClientRect();
+      var gap = 8;
+      var viewH = window.innerHeight;
+      var viewW = window.innerWidth;
+      var showBelow = rect.top < showBelowThreshold;
+      var left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+      left = Math.max(8, Math.min(viewW - tipRect.width - 8, left));
+      var top;
+      if (showBelow) {
+        top = rect.bottom + gap;
+      } else {
+        top = rect.top - tipRect.height - gap;
+      }
+      top = Math.max(8, Math.min(viewH - tipRect.height - 8, top));
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
+    }
+    function hideTooltip() {
+      tip.classList.remove('visible');
+      tip.textContent = '';
+    }
+    function bindTooltip(el) {
+      if (el.hasAttribute('data-tooltip-bound')) return;
+      el.setAttribute('data-tooltip-bound', '1');
+      el.addEventListener('mouseenter', function (e) {
+        var text = el.getAttribute('data-tooltip');
+        if (text) showTooltip(e, text);
+      });
+      el.addEventListener('mouseleave', hideTooltip);
+    }
+    function bindAllTooltips() {
+      document.querySelectorAll('[data-tooltip]').forEach(bindTooltip);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindAllTooltips);
+    } else {
+      bindAllTooltips();
+    }
+    setTimeout(bindAllTooltips, 500);
+  })();
+  </script>
+  <!-- =============================================================================
+       JAVASCRIPT: NAVIGATION & CREDITS MODAL (product grid rendered by app.js)
+       - showSection(sectionId): hides all sections, shows the one with sectionId,
+         and updates header/sidebar nav active state. This is the CORE navigation.
+       - Header nav buttons and sidebar nav buttons both call showSection.
+       - TOP UP button (id="btn-top-up") opens the Credits Shop modal.
+       - Credits modal close: X button and backdrop click hide the modal.
+       ============================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      // -------------------------------------------------------------------------
+      // LIST OF ALL SECTION IDs (single source of truth for which sections exist)
+      // -------------------------------------------------------------------------
+      var SECTION_IDS = [
+        'dashboard-section',
+        'community-section',
+        'price-list-section',
+        'trades-section',
+        'messages-section'
+      ];
+
+      // -------------------------------------------------------------------------
+      // showSection(sectionId)
+      // - Hides every section in the app, then shows only the section whose
+      //   id matches sectionId. Also updates the "active" state on header and
+      //   sidebar nav so the current page is visually highlighted.
+      // - Called when user clicks any main nav link (Dashboard, Community, etc.).
+      // -------------------------------------------------------------------------
+      function showSection(sectionId) {
+        if (!sectionId) return;
+
+        // 1) Hide all sections by adding the 'hidden' class
+        SECTION_IDS.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
+
+        // 2) Show the requested section by removing 'hidden'
+        var target = document.getElementById(sectionId);
+        if (target) target.classList.remove('hidden');
+
+        // 3) Update header nav: remove active style from all, add to the one that matches
+        document.querySelectorAll('.header-nav').forEach(function (btn) {
+          var isActive = btn.getAttribute('data-section') === sectionId;
+          btn.classList.toggle('text-fi-accent', isActive);
+          btn.classList.toggle('border-b-2', isActive);
+          btn.classList.toggle('border-fi-accent', isActive);
+          btn.classList.toggle('pb-0.5', isActive);
+          btn.classList.toggle('text-gray-400', !isActive);
+        });
+
+        // 4) Sidebar nav: optional – you can add similar active state for .nav-link if desired
+        document.querySelectorAll('.nav-link').forEach(function (btn) {
+          var isActive = btn.getAttribute('data-section') === sectionId;
+          btn.classList.toggle('bg-white/10', isActive);
+          btn.classList.toggle('text-white', isActive);
+          btn.classList.toggle('text-gray-400', !isActive);
+        });
+      }
+
+      // -------------------------------------------------------------------------
+      // Wire header nav: clicking any link with data-section="..." switches view
+      // -------------------------------------------------------------------------
+      document.querySelectorAll('.header-nav').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showSection(btn.getAttribute('data-section'));
+        });
+      });
+
+      // -------------------------------------------------------------------------
+      // Wire sidebar nav: same behavior as header (for learning – both control sections)
+      // -------------------------------------------------------------------------
+      document.querySelectorAll('.nav-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showSection(btn.getAttribute('data-section'));
+        });
+      });
+
+      // -------------------------------------------------------------------------
+      // BUY CREDITS / TOP UP BUTTON (id="btn-top-up")
+      // This is the button that opens the Credits Shop modal. Clicking it
+      // removes the 'hidden' class from the modal so it becomes visible.
+      // -------------------------------------------------------------------------
+      var btnTopUp = document.getElementById('btn-top-up');
+      var creditsModal = document.getElementById('credits-modal');
+      var creditsModalClose = document.getElementById('credits-modal-close');
+      var creditsModalBackdrop = document.getElementById('credits-modal-backdrop');
+
+      if (btnTopUp && creditsModal) {
+        btnTopUp.addEventListener('click', function () {
+          creditsModal.classList.remove('hidden');
+          creditsModal.setAttribute('aria-hidden', 'false');
+        });
+      }
+
+      function closeCreditsModal() {
+        if (creditsModal) {
+          creditsModal.classList.add('hidden');
+          creditsModal.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      if (creditsModalClose) {
+        creditsModalClose.addEventListener('click', closeCreditsModal);
+      }
+      if (creditsModalBackdrop) {
+        creditsModalBackdrop.addEventListener('click', closeCreditsModal);
+      }
+
+      // -------------------------------------------------------------------------
+      // FAKE PAYMENT SIMULATION (Pay button → loading → success → Done)
+      // When user clicks "Pay": show loading spinner, then after ~2s show Success.
+      // "Done" resets the modal to the shop view and closes it. Replace this
+      // with Stripe (or real payment) later.
+      // -------------------------------------------------------------------------
+      var creditsModalContent = document.getElementById('credits-modal-content');
+      var creditsModalLoading = document.getElementById('credits-modal-loading');
+      var creditsModalSuccess = document.getElementById('credits-modal-success');
+      var creditsModalPay = document.getElementById('credits-modal-pay');
+      var creditsModalSuccessDone = document.getElementById('credits-modal-success-done');
+      var headerBalanceEl = document.getElementById('header-balance');
+      var tradeBalanceEl = document.getElementById('trade-your-balance');
+      var creditsModalBalanceEl = document.getElementById('credits-modal-balance');
+
+      var PAYMENT_DELAY_MS = 2000;
+      var userBalance = 5450;
+      var pendingPurchaseCredits = 0;
+
+      function updateBalanceDisplay() {
+        var formatted = userBalance.toLocaleString();
+        if (headerBalanceEl) headerBalanceEl.textContent = formatted + ' CR';
+        if (tradeBalanceEl) tradeBalanceEl.textContent = formatted;
+        if (creditsModalBalanceEl) creditsModalBalanceEl.textContent = formatted + ' CR';
+      }
+
+      document.querySelectorAll('.credits-package').forEach(function (pkg) {
+        pkg.addEventListener('click', function () {
+          document.querySelectorAll('.credits-package').forEach(function (el) {
+            el.classList.remove('border-2', 'border-fi-accent');
+            el.classList.add('border', 'border-white/10');
+          });
+          pkg.classList.remove('border', 'border-white/10');
+          pkg.classList.add('border-2', 'border-fi-accent');
+        });
+      });
+
+      if (creditsModalPay && creditsModalContent && creditsModalLoading && creditsModalSuccess) {
+        creditsModalPay.addEventListener('click', function () {
+          var selected = creditsModalContent.querySelector('.credits-package.border-2.border-fi-accent');
+          pendingPurchaseCredits = selected ? parseInt(selected.getAttribute('data-credits'), 10) || 0 : 0;
+
+          var panel = creditsModalContent.parentElement;
+          if (panel) panel.style.minHeight = panel.offsetHeight + 'px';
+
+          creditsModalContent.classList.add('hidden');
+          creditsModalLoading.classList.remove('hidden');
+          creditsModalSuccess.classList.add('hidden');
+
+          window.setTimeout(function () {
+            creditsModalLoading.classList.add('hidden');
+            creditsModalSuccess.classList.remove('hidden');
+          }, PAYMENT_DELAY_MS);
+        });
+      }
+
+      if (creditsModalSuccessDone && creditsModalContent && creditsModalLoading && creditsModalSuccess) {
+        creditsModalSuccessDone.addEventListener('click', function () {
+          var amt = pendingPurchaseCredits;
+          userBalance += amt;
+          pendingPurchaseCredits = 0;
+          updateBalanceDisplay();
+          if (amt > 0) document.dispatchEvent(new CustomEvent('balance-added', { detail: { amount: amt } }));
+
+          creditsModalSuccess.classList.add('hidden');
+          creditsModalLoading.classList.add('hidden');
+          creditsModalContent.classList.remove('hidden');
+          var panel = creditsModalContent.parentElement;
+          if (panel) panel.style.minHeight = '';
+          closeCreditsModal();
+        });
+      }
+
+      // When opening the modal, ensure we show the shop content (not loading/success)
+      if (btnTopUp && creditsModalContent && creditsModalLoading && creditsModalSuccess) {
+        btnTopUp.addEventListener('click', function () {
+          creditsModalContent.classList.remove('hidden');
+          creditsModalLoading.classList.add('hidden');
+          creditsModalSuccess.classList.add('hidden');
+          var panel = creditsModalContent.parentElement;
+          if (panel) panel.style.minHeight = '';
+        });
+      }
+
+      // -------------------------------------------------------------------------
+      // Optional: keyboard escape closes Credits modal
+      // -------------------------------------------------------------------------
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && creditsModal && !creditsModal.classList.contains('hidden')) {
+          closeCreditsModal();
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // CREATE POST MODAL (Community – pick items from catalog + write text)
+      // -------------------------------------------------------------------------
+      var createPostModal = document.getElementById('create-post-modal');
+      var createPostBackdrop = document.getElementById('create-post-backdrop');
+      var createPostClose = document.getElementById('create-post-close');
+      var createPostCancel = document.getElementById('create-post-cancel');
+      var createPostBody = document.getElementById('create-post-body');
+      var createPostCatalogSearch = document.getElementById('create-post-catalog-search');
+      var createPostCatalogList = document.getElementById('create-post-catalog-list');
+      var createPostSelectedWrap = document.getElementById('create-post-selected-wrap');
+      var createPostSelected = document.getElementById('create-post-selected');
+      var createPostSubmit = document.getElementById('create-post-submit');
+      var communityCreatePostBtn = document.getElementById('community-create-post-btn');
+      var communityFeed = document.getElementById('community-feed');
+
+      var createPostSelectedIds = {};
+
+      function openCreatePostModal() {
+        if (!createPostModal) return;
+        createPostModal.classList.remove('hidden');
+        createPostModal.setAttribute('aria-hidden', 'false');
+        createPostSelectedIds = {};
+        if (createPostBody) createPostBody.value = '';
+        if (createPostCatalogSearch) createPostCatalogSearch.value = '';
+        renderCreatePostCatalog();
+        renderCreatePostSelected();
+      }
+
+      function closeCreatePostModal() {
+        if (!createPostModal) return;
+        createPostModal.classList.add('hidden');
+        createPostModal.setAttribute('aria-hidden', 'true');
+      }
+
+      function renderCreatePostCatalog() {
+        if (!createPostCatalogList || !window.products) return;
+        var q = (createPostCatalogSearch && createPostCatalogSearch.value) ? createPostCatalogSearch.value.toLowerCase() : '';
+        var list = window.products.filter(function (p) {
+          return !q || (p.name && p.name.toLowerCase().indexOf(q) !== -1) || (p.brand && p.brand.toLowerCase().indexOf(q) !== -1);
+        });
+        createPostCatalogList.innerHTML = list.map(function (p) {
+          var selected = createPostSelectedIds[p.id];
+          var border = selected ? ' border-2 border-fi-accent ' : ' border border-white/10 ';
+          return '<button type="button" class="create-post-catalog-item flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-left w-full ' + border + '" data-product-id="' + p.id + '">' +
+            '<img src="' + (p.imageURL || '') + '" alt="" class="w-10 h-10 rounded object-cover bg-gray-700" onerror="this.style.display=\'none\'" />' +
+            '<span class="text-white text-sm truncate flex-1">' + (p.name || p.id) + '</span>' +
+            (selected ? '<span class="text-fi-accent">✓</span>' : '') +
+            '</button>';
+        }).join('');
+        createPostCatalogList.querySelectorAll('.create-post-catalog-item').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-product-id');
+            if (createPostSelectedIds[id]) delete createPostSelectedIds[id]; else createPostSelectedIds[id] = true;
+            renderCreatePostCatalog();
+            renderCreatePostSelected();
+          });
+        });
+      }
+
+      function renderCreatePostSelected() {
+        if (!createPostSelected || !createPostSelectedWrap) return;
+        var ids = Object.keys(createPostSelectedIds).filter(function (id) { return createPostSelectedIds[id]; });
+        createPostSelectedWrap.classList.toggle('hidden', ids.length === 0);
+        if (ids.length === 0) { createPostSelected.innerHTML = ''; return; }
+        var products = (window.products || []).filter(function (p) { return ids.indexOf(p.id) !== -1; });
+        createPostSelected.innerHTML = products.map(function (p) {
+          return '<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 border border-white/10">' +
+            '<img src="' + (p.imageURL || '') + '" alt="" class="w-6 h-6 rounded object-cover bg-gray-700" onerror="this.style.display=\'none\'" />' +
+            '<span class="text-white text-xs max-w-[120px] truncate">' + (p.name || p.id) + '</span>' +
+            '<button type="button" class="create-post-remove-item text-gray-400 hover:text-white" data-product-id="' + p.id + '" aria-label="Remove">×</button>' +
+            '</span>';
+        }).join('');
+        createPostSelected.querySelectorAll('.create-post-remove-item').forEach(function (btn) {
+          btn.addEventListener('click', function (e) { e.stopPropagation(); delete createPostSelectedIds[btn.getAttribute('data-product-id')]; renderCreatePostCatalog(); renderCreatePostSelected(); });
+        });
+      }
+
+      function buildCommunityPostCard(authorName, bodyText, productIds) {
+        var products = (window.products || []).filter(function (p) { return productIds.indexOf(p.id) !== -1; });
+        var initials = (authorName || 'You').slice(0, 2).toUpperCase();
+        var thumbnails = products.map(function (p) {
+          return '<div class="rounded-lg overflow-hidden border border-white/10 w-20 h-20 bg-gray-700 flex items-center justify-center shrink-0">' +
+            '<img src="' + (p.imageURL || '') + '" alt="" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML=\'👟\'" />' +
+            '</div>';
+        }).join('');
+        var itemsLabel = products.map(function (p) { return (p.brand || '') + ' — ' + (p.name || p.id); }).join(' · ');
+        if (itemsLabel.length > 60) itemsLabel = itemsLabel.slice(0, 57) + '...';
+        return '<div class="bg-card rounded-xl p-5 border border-white/5 community-post">' +
+          '<div class="flex gap-3">' +
+            '<div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-black font-bold text-sm shrink-0">' + initials + '</div>' +
+            '<div class="flex-1 min-w-0">' +
+              '<div class="flex items-center gap-2"><span class="font-semibold text-white">' + (authorName || 'You') + '</span><span class="text-gray-500 text-sm">Just now</span></div>' +
+              '<p class="text-gray-300 text-sm mt-2">' + (bodyText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>' +
+              (thumbnails ? '<div class="flex gap-2 mt-3 flex-wrap">' + thumbnails + '</div>' : '') +
+              (itemsLabel ? '<div class="text-gray-500 text-xs mt-2">' + itemsLabel + '</div>' : '') +
+              '<div class="flex items-center justify-between mt-3">' +
+                '<span class="text-gray-500 text-sm">0 interested</span>' +
+                '<button type="button" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Send interest to the seller; they can message you">I\'m Interested</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      if (communityCreatePostBtn) communityCreatePostBtn.addEventListener('click', openCreatePostModal);
+      if (createPostClose) createPostClose.addEventListener('click', closeCreatePostModal);
+      if (createPostBackdrop) createPostBackdrop.addEventListener('click', closeCreatePostModal);
+      if (createPostCancel) createPostCancel.addEventListener('click', closeCreatePostModal);
+      if (createPostCatalogSearch) createPostCatalogSearch.addEventListener('input', renderCreatePostCatalog);
+
+      if (createPostSubmit && communityFeed) {
+        createPostSubmit.addEventListener('click', function () {
+          var body = (createPostBody && createPostBody.value) ? createPostBody.value.trim() : '';
+          var ids = Object.keys(createPostSelectedIds).filter(function (id) { return createPostSelectedIds[id]; });
+          if (!body && ids.length === 0) return;
+          var displayNameEl = document.getElementById('display-username');
+          var authorName = (displayNameEl && displayNameEl.textContent) ? displayNameEl.textContent.trim() : 'You';
+          var cardHtml = buildCommunityPostCard(authorName, body, ids);
+          var wrap = document.createElement('div');
+          wrap.innerHTML = cardHtml;
+          var card = wrap.firstElementChild;
+          if (card) communityFeed.insertBefore(card, communityFeed.firstChild);
+          closeCreatePostModal();
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && createPostModal && !createPostModal.classList.contains('hidden')) closeCreatePostModal();
+      });
+
+      // -------------------------------------------------------------------------
+      // DASHBOARD TABS: Premium Marketplace | My Closet
+      // -------------------------------------------------------------------------
+      var dashboardTabMarketplace = document.getElementById('dashboard-tab-marketplace');
+      var dashboardTabCloset = document.getElementById('dashboard-tab-closet');
+      var dashboardMarketplacePanel = document.getElementById('dashboard-marketplace-panel');
+      var dashboardClosetPanel = document.getElementById('dashboard-closet-panel');
+
+      function showDashboardTab(tab) {
+        var isMarketplace = tab === 'marketplace';
+        if (dashboardMarketplacePanel) dashboardMarketplacePanel.classList.toggle('hidden', !isMarketplace);
+        if (dashboardClosetPanel) dashboardClosetPanel.classList.toggle('hidden', isMarketplace);
+        if (dashboardTabMarketplace) {
+          dashboardTabMarketplace.classList.toggle('bg-fi-accent', isMarketplace);
+          dashboardTabMarketplace.classList.toggle('text-black', isMarketplace);
+          dashboardTabMarketplace.classList.toggle('text-gray-400', !isMarketplace);
+        }
+        if (dashboardTabCloset) {
+          dashboardTabCloset.classList.toggle('bg-fi-accent', !isMarketplace);
+          dashboardTabCloset.classList.toggle('text-black', !isMarketplace);
+          dashboardTabCloset.classList.toggle('text-gray-400', isMarketplace);
+        }
+        if (tab === 'closet') renderMyCloset();
+      }
+
+      if (dashboardTabMarketplace) dashboardTabMarketplace.addEventListener('click', function () { showDashboardTab('marketplace'); });
+      if (dashboardTabCloset) dashboardTabCloset.addEventListener('click', function () { showDashboardTab('closet'); });
+
+      // -------------------------------------------------------------------------
+      // MY LISTINGS (My Closet) – Supabase cloud
+      // -------------------------------------------------------------------------
+      function getCurrentOwner() {
+        try { return localStorage.getItem('ps-username') || 'default'; } catch (e) { return 'default'; }
+      }
+
+      function getMyListings() {
+        if (!window.marketService || !window.marketService.fetchItems) return Promise.resolve([]);
+        return window.marketService.fetchItems().then(function (rows) {
+          var owner = getCurrentOwner();
+          return (rows || []).filter(function (r) { return (r.owner || 'default') === owner; }).map(function (r) {
+            return { id: r.id, name: r.name, priceILS: r.price, price: r.price, imageData: r.image, image: r.image, status: 'live', condition: 'good', owner: r.owner };
+          });
+        }).catch(function () { return []; });
+      }
+
+      function renderMyCloset() {
+        var grid = document.getElementById('my-closet-grid');
+        var empty = document.getElementById('my-closet-empty');
+        if (!grid) return;
+        getMyListings().then(function (listings) {
+          if (listings.length === 0) {
+            grid.classList.add('hidden');
+            if (empty) { empty.classList.remove('hidden'); empty.style.display = ''; }
+            return;
+          }
+          grid.classList.remove('hidden');
+          if (empty) empty.classList.add('hidden');
+          var statusMap = { pending: 'Pending Authentication 🕵️', verified: 'Verified ✅', live: 'Live' };
+          var statusClass = { pending: 'bg-amber-500/20 text-amber-400', verified: 'bg-fi-success/20 text-fi-success', live: 'bg-fi-success/20 text-fi-success' };
+          grid.innerHTML = listings.map(function (item) {
+            var isPending = item.status === 'pending';
+            var cardClass = 'bg-card rounded-xl overflow-hidden border border-white/5 transition-all ' + (isPending ? ' opacity-60' : '');
+            var imgSrc = (item.imageData && item.imageData.indexOf('data:') === 0) ? item.imageData : (item.image || 'https://placehold.co/400x300/1a1a1a/666?text=No+Image');
+            var listingId = (item.id || '').replace(/"/g, '&quot;');
+            return '<div class="product-card ' + cardClass + '" data-listing-id="' + (item.id || '') + '">' +
+              '<div class="relative h-44 bg-gray-800 flex items-center justify-center overflow-hidden">' +
+                '<img src="' + imgSrc + '" alt="" class="absolute inset-0 w-full h-full object-cover object-center" />' +
+                '<div class="absolute top-2 left-2">' +
+                  '<span class="px-2 py-0.5 rounded text-xs font-medium ' + (statusClass[item.status] || statusClass.live) + '">' + (statusMap[item.status] || item.status) + '</span>' +
+                '</div>' +
+                '<div class="absolute top-2 right-2 flex items-center gap-1">' +
+                  '<button type="button" class="btn-edit-listing px-2 py-1 rounded bg-black/50 hover:bg-fi-accent text-white text-xs font-medium transition-colors" data-listing-id="' + listingId + '" title="Edit listing">Edit</button>' +
+                  '<button type="button" class="btn-delete-listing px-2 py-1 rounded bg-black/50 hover:bg-red-500 text-white text-xs font-medium transition-colors" data-listing-id="' + listingId + '" title="Delete listing">Delete</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="p-4">' +
+                '<h3 class="font-bold text-white truncate">' + (item.name || 'Untitled').replace(/</g, '&lt;') + '</h3>' +
+                '<p class="text-gray-400 text-sm mt-1">' + (item.condition === 'new' ? 'New with Tags' : item.condition === 'like-new' ? 'Used - Like New' : 'Used - Good') + '</p>' +
+                '<div class="mt-2 text-fi-success font-bold">₪' + Number(item.priceILS || item.price || 0).toLocaleString() + '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+          grid.querySelectorAll('.btn-edit-listing').forEach(function (btn) {
+            btn.addEventListener('click', function (e) { e.stopPropagation(); openSellItemModalForEdit(btn.getAttribute('data-listing-id')); });
+          });
+          grid.querySelectorAll('.btn-delete-listing').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var id = btn.getAttribute('data-listing-id');
+              if (!id || !window.marketService || !window.marketService.deleteItem) return;
+              window.marketService.deleteItem(id).then(function () { renderMyCloset(); });
+            });
+          });
+        });
+      }
+
+      // -------------------------------------------------------------------------
+      // SELL ITEM MODAL: open/close, image preview, submit, luxury verification
+      // -------------------------------------------------------------------------
+      var sellItemModal = document.getElementById('sell-item-modal');
+      var sellItemBackdrop = document.getElementById('sell-item-backdrop');
+      var sellItemClose = document.getElementById('sell-item-close');
+      var sellItemCancel = document.getElementById('sell-item-cancel');
+      var sellItemForm = document.getElementById('sell-item-form');
+      var sellItemName = document.getElementById('sell-item-name');
+      var sellItemPrice = document.getElementById('sell-item-price');
+      var sellItemCondition = document.getElementById('sell-item-condition');
+      var sellItemLuxury = document.getElementById('sell-item-luxury');
+      var sellItemImage = document.getElementById('sell-item-image');
+      var sellItemImageArea = document.getElementById('sell-item-image-area');
+      var sellItemPreview = document.getElementById('sell-item-preview');
+      var sellItemImageLabel = document.getElementById('sell-item-image-label');
+      var sellItemSubmit = document.getElementById('sell-item-submit');
+      var sellItemFab = document.getElementById('sell-item-fab');
+      var sellItemBtnMyCloset = document.getElementById('sell-item-btn-my-closet');
+      var sellItemToast = document.getElementById('sell-item-toast');
+      var sellItemToastMessage = document.getElementById('sell-item-toast-message');
+      var sellItemModalTitle = document.getElementById('sell-item-modal-title');
+      var sellItemSubmitLabel = document.getElementById('sell-item-submit-label');
+
+      var sellItemCurrentImageData = null;
+      var sellItemEditingId = null;
+
+      function openSellItemModal() {
+        sellItemEditingId = null;
+        if (sellItemModalTitle) sellItemModalTitle.textContent = 'Sell Item';
+        if (sellItemSubmitLabel) sellItemSubmitLabel.textContent = 'List Item';
+        if (!sellItemModal) return;
+        sellItemModal.classList.remove('hidden');
+        sellItemModal.setAttribute('aria-hidden', 'false');
+        if (sellItemForm) sellItemForm.reset();
+        sellItemCurrentImageData = null;
+        if (sellItemPreview) { sellItemPreview.src = ''; sellItemPreview.classList.add('hidden'); }
+        if (sellItemImageLabel) { sellItemImageLabel.classList.remove('hidden'); sellItemImageLabel.textContent = 'Click to upload image'; }
+      }
+
+      function openSellItemModalForEdit(listingId) {
+        if (!listingId || !sellItemModal) return;
+        getMyListings().then(function (listings) {
+          var item = listings.find(function (x) { return String(x.id) === String(listingId); });
+          if (!item) return;
+          sellItemEditingId = listingId;
+          if (sellItemModalTitle) sellItemModalTitle.textContent = 'Edit item';
+          if (sellItemSubmitLabel) sellItemSubmitLabel.textContent = 'Save changes';
+          sellItemModal.classList.remove('hidden');
+          sellItemModal.setAttribute('aria-hidden', 'false');
+          if (sellItemName) sellItemName.value = item.name || '';
+          if (sellItemPrice) sellItemPrice.value = String(item.priceILS || item.price || 0);
+          if (sellItemCondition) sellItemCondition.value = item.condition || 'good';
+          if (sellItemLuxury) sellItemLuxury.checked = !!item.isLuxury;
+          sellItemCurrentImageData = item.imageData || item.image || null;
+          if (sellItemPreview) {
+            if (sellItemCurrentImageData) {
+              sellItemPreview.src = sellItemCurrentImageData;
+              sellItemPreview.classList.remove('hidden');
+            } else {
+              sellItemPreview.src = '';
+              sellItemPreview.classList.add('hidden');
+            }
+          }
+          if (sellItemImageLabel) {
+            sellItemImageLabel.classList.toggle('hidden', !!sellItemCurrentImageData);
+            sellItemImageLabel.textContent = sellItemCurrentImageData ? '' : 'Click to upload image';
+          }
+          if (sellItemImage) sellItemImage.value = '';
+        });
+      }
+
+      function closeSellItemModal() {
+        if (!sellItemModal) return;
+        sellItemEditingId = null;
+        if (sellItemModalTitle) sellItemModalTitle.textContent = 'Sell Item';
+        if (sellItemSubmitLabel) sellItemSubmitLabel.textContent = 'List Item';
+        sellItemModal.classList.add('hidden');
+        sellItemModal.setAttribute('aria-hidden', 'true');
+      }
+
+      if (sellItemImageArea && sellItemImage) {
+        sellItemImageArea.addEventListener('click', function () { sellItemImage.click(); });
+        sellItemImage.addEventListener('change', function () {
+          var file = sellItemImage.files && sellItemImage.files[0];
+          if (!file || !file.type.match(/^image\//)) return;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            sellItemCurrentImageData = e.target.result;
+            if (sellItemPreview) { sellItemPreview.src = sellItemCurrentImageData; sellItemPreview.classList.remove('hidden'); }
+            if (sellItemImageLabel) sellItemImageLabel.classList.add('hidden');
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (sellItemFab) sellItemFab.addEventListener('click', openSellItemModal);
+      if (sellItemBtnMyCloset) sellItemBtnMyCloset.addEventListener('click', openSellItemModal);
+      if (sellItemClose) sellItemClose.addEventListener('click', closeSellItemModal);
+      if (sellItemBackdrop) sellItemBackdrop.addEventListener('click', closeSellItemModal);
+      if (sellItemCancel) sellItemCancel.addEventListener('click', closeSellItemModal);
+
+      if (sellItemSubmit && sellItemForm) {
+        sellItemSubmit.addEventListener('click', function (e) {
+          e.preventDefault();
+          var name = (sellItemName && sellItemName.value) ? sellItemName.value.trim() : '';
+          var priceVal = sellItemPrice && sellItemPrice.value ? parseInt(sellItemPrice.value, 10) : NaN;
+          if (isNaN(priceVal) || priceVal < 1) priceVal = 0;
+          if (!name || !priceVal) return;
+          var condition = (sellItemCondition && sellItemCondition.value) ? sellItemCondition.value : 'good';
+          var isLuxury = sellItemLuxury && sellItemLuxury.checked;
+          var svc = window.marketService;
+
+          if (sellItemEditingId && svc && svc.updateItem) {
+            svc.updateItem(sellItemEditingId, {
+              name: name,
+              price: priceVal,
+              image: sellItemCurrentImageData || ''
+            }).then(function () {
+              sellItemEditingId = null;
+              if (sellItemModalTitle) sellItemModalTitle.textContent = 'Sell Item';
+              if (sellItemSubmitLabel) sellItemSubmitLabel.textContent = 'List Item';
+              closeSellItemModal();
+              showSection('dashboard-section');
+              showDashboardTab('closet');
+              renderMyCloset();
+            });
+            return;
+          }
+
+          if (!svc || !svc.addItem) return;
+          svc.addItem({
+            name: name,
+            price: priceVal,
+            image: sellItemCurrentImageData || '',
+            owner: getCurrentOwner()
+          }).then(function () {
+            closeSellItemModal();
+            showSection('dashboard-section');
+            showDashboardTab('closet');
+            renderMyCloset();
+            if (sellItemToast) {
+              sellItemToast.style.display = 'flex';
+              sellItemToast.classList.remove('hidden');
+              if (sellItemToastMessage) sellItemToastMessage.textContent = '"' + name + '" listed.';
+              setTimeout(function () {
+                sellItemToast.style.display = 'none';
+                sellItemToast.classList.add('hidden');
+              }, 4000);
+            }
+            if (isLuxury && typeof Notification !== 'undefined' && Notification.requestPermission) {
+              Notification.requestPermission();
+            }
+          });
+        });
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sellItemModal && !sellItemModal.classList.contains('hidden')) closeSellItemModal();
+      });
+
+      // -------------------------------------------------------------------------
+      // Balance sync: deductions (buy, withdraw, trade fee) from app.js
+      // -------------------------------------------------------------------------
+      document.addEventListener('balance-deduct', function (e) {
+        var amt = e.detail && e.detail.amount;
+        if (typeof amt === 'number' && amt > 0) {
+          userBalance -= amt;
+          updateBalanceDisplay();
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // Buy confirmation modal (Buyer Pays: item + fee)
+      // -------------------------------------------------------------------------
+      var buyConfirmModal = document.getElementById('buy-confirm-modal');
+      var buyConfirmBackdrop = document.getElementById('buy-confirm-backdrop');
+      var buyConfirmCancel = document.getElementById('buy-confirm-cancel');
+      var buyConfirmPay = document.getElementById('buy-confirm-pay');
+      document.addEventListener('show-buy-modal', function (e) {
+        var d = e.detail || {};
+        if (!buyConfirmModal) return;
+        var nameEl = document.getElementById('buy-confirm-item-name');
+        var priceEl = document.getElementById('buy-confirm-item-price');
+        var pctEl = document.getElementById('buy-confirm-fee-pct');
+        var feeEl = document.getElementById('buy-confirm-fee-amount');
+        var totalEl = document.getElementById('buy-confirm-total');
+        if (nameEl) nameEl.textContent = d.productName || '';
+        if (priceEl) priceEl.textContent = (d.itemPrice != null ? Number(d.itemPrice).toLocaleString() : '') + ' CR';
+        if (pctEl) pctEl.textContent = (d.feePct != null ? d.feePct : '') + '%';
+        if (feeEl) feeEl.textContent = (d.feeAmount != null ? Number(d.feeAmount).toLocaleString() : '') + ' CR';
+        if (totalEl) totalEl.textContent = (d.total != null ? Number(d.total).toLocaleString() : '') + ' CR';
+        buyConfirmModal.classList.remove('hidden');
+        buyConfirmModal.setAttribute('aria-hidden', 'false');
+      });
+      function closeBuyConfirmModal() {
+        if (buyConfirmModal) { buyConfirmModal.classList.add('hidden'); buyConfirmModal.setAttribute('aria-hidden', 'true'); }
+      }
+      if (buyConfirmBackdrop) buyConfirmBackdrop.addEventListener('click', closeBuyConfirmModal);
+      if (buyConfirmCancel) buyConfirmCancel.addEventListener('click', closeBuyConfirmModal);
+      if (buyConfirmPay) buyConfirmPay.addEventListener('click', function () {
+        var total = parseInt(document.getElementById('buy-confirm-total').textContent.replace(/\D/g, ''), 10) || 0;
+        var feeAmount = parseInt(document.getElementById('buy-confirm-fee-amount').textContent.replace(/\D/g, ''), 10) || 0;
+        closeBuyConfirmModal();
+        document.dispatchEvent(new CustomEvent('confirm-buy', { detail: { total: total, feeAmount: feeAmount } }));
+      });
+
+      // -------------------------------------------------------------------------
+      // Withdraw to Bank modal (2% fee)
+      // -------------------------------------------------------------------------
+      var withdrawModal = document.getElementById('withdraw-modal');
+      var withdrawBackdrop = document.getElementById('withdraw-backdrop');
+      var withdrawAmountInput = document.getElementById('withdraw-amount');
+      var withdrawBreakdown = document.getElementById('withdraw-breakdown');
+      var withdrawConfirm = document.getElementById('withdraw-confirm');
+      var withdrawCancel = document.getElementById('withdraw-cancel');
+      var withdrawToast = document.getElementById('withdraw-toast');
+      var btnWithdraw = document.getElementById('btn-withdraw');
+      if (btnWithdraw && withdrawModal) {
+        btnWithdraw.addEventListener('click', function () {
+          if (withdrawAmountInput) { withdrawAmountInput.value = ''; withdrawAmountInput.focus(); }
+          if (withdrawBreakdown) withdrawBreakdown.classList.add('hidden');
+          withdrawModal.classList.remove('hidden');
+          withdrawModal.setAttribute('aria-hidden', 'false');
+        });
+      }
+      function closeWithdrawModal() {
+        if (withdrawModal) { withdrawModal.classList.add('hidden'); withdrawModal.setAttribute('aria-hidden', 'true'); }
+      }
+      if (withdrawBackdrop) withdrawBackdrop.addEventListener('click', closeWithdrawModal);
+      if (withdrawCancel) withdrawCancel.addEventListener('click', closeWithdrawModal);
+      if (withdrawAmountInput && withdrawBreakdown) {
+        withdrawAmountInput.addEventListener('input', function () {
+          var val = parseInt(withdrawAmountInput.value, 10);
+          if (!val || val < 1) { withdrawBreakdown.classList.add('hidden'); return; }
+          var fee = Math.round(val * 0.02);
+          var receive = val - fee;
+          var youWithdrawEl = document.getElementById('withdraw-you-withdraw');
+          var feeEl = document.getElementById('withdraw-fee');
+          var receiveEl = document.getElementById('withdraw-you-receive');
+          if (youWithdrawEl) youWithdrawEl.textContent = val.toLocaleString() + ' CR';
+          if (feeEl) feeEl.textContent = fee.toLocaleString() + ' CR';
+          if (receiveEl) receiveEl.textContent = receive.toLocaleString() + ' CR';
+          withdrawBreakdown.classList.remove('hidden');
+        });
+      }
+      if (withdrawConfirm && withdrawAmountInput) {
+        withdrawConfirm.addEventListener('click', function () {
+          var val = parseInt(withdrawAmountInput.value, 10);
+          if (!val || val < 1) { alert('Enter a valid amount.'); return; }
+          if (val > userBalance) { alert('Insufficient balance.'); return; }
+          document.dispatchEvent(new CustomEvent('balance-deduct', { detail: { amount: val } }));
+          closeWithdrawModal();
+          if (withdrawToast) {
+            withdrawToast.classList.remove('hidden');
+            setTimeout(function () { withdrawToast.classList.add('hidden'); }, 4000);
+          }
+        });
+      }
+
+      // -------------------------------------------------------------------------
+      // Lucky Wheel: receive credits or item and update balance / My Closet
+      // -------------------------------------------------------------------------
+      document.addEventListener('lucky-wheel-credits', function (e) {
+        var amt = e.detail && e.detail.amount;
+        if (typeof amt === 'number' && amt > 0) {
+          userBalance += amt;
+          updateBalanceDisplay();
+        }
+      });
+      document.addEventListener('lucky-wheel-item', function (e) {
+        var item = e.detail && e.detail.item;
+        if (item) {
+          var list = getMyListings();
+          list.unshift(item);
+          saveMyListings(list);
+          if (typeof renderMyCloset === 'function') renderMyCloset();
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // PRO Membership: add 500 bonus credits when user subscribes
+      // -------------------------------------------------------------------------
+      document.addEventListener('pro-subscribed', function () {
+        userBalance += 500;
+        updateBalanceDisplay();
+      });
+
+      // -------------------------------------------------------------------------
+      // Initialize: dashboard visible; product grid is rendered by app.js from window.products
+      // -------------------------------------------------------------------------
+      showSection('dashboard-section');
+      updateBalanceDisplay();
+    })();
+  </script>
+
+  <script>
+  (function () {
+    var USER_PLAN_KEY = 'userPlan';
+    var proModal = document.getElementById('pro-modal');
+    var proBackdrop = document.getElementById('pro-modal-backdrop');
+    var proClose = document.getElementById('pro-modal-close');
+    var proSubscribe = document.getElementById('pro-modal-subscribe');
+    var proProcessing = document.getElementById('pro-modal-processing');
+    var proSuccess = document.getElementById('pro-modal-success');
+    var proSuccessClose = document.getElementById('pro-modal-success-close');
+    var proModalBody = proModal && proModal.querySelector('.pro-modal-body');
+    var btnUpgradeHeader = document.getElementById('btn-upgrade-pro-header');
+    var btnUpgradeSidebar = document.getElementById('btn-upgrade-pro-sidebar');
+    var crownSidebar = document.getElementById('pro-crown-sidebar');
+    var crownHeader = document.getElementById('pro-crown-header');
+    var displayAvatar = document.getElementById('display-avatar');
+    var headerProfileIcon = document.getElementById('header-profile-icon');
+
+    function isPro() {
+      return localStorage.getItem(USER_PLAN_KEY) === 'PRO';
+    }
+
+    function applyProVisuals() {
+      var pro = isPro();
+      if (crownSidebar) crownSidebar.classList.toggle('hidden', !pro);
+      if (crownHeader) crownHeader.classList.toggle('hidden', !pro);
+      if (displayAvatar) displayAvatar.classList.toggle('pro', pro);
+      if (headerProfileIcon) headerProfileIcon.classList.toggle('pro', pro);
+      if (btnUpgradeHeader) btnUpgradeHeader.classList.toggle('hidden', pro);
+      if (btnUpgradeSidebar) btnUpgradeSidebar.classList.toggle('hidden', pro);
+    }
+
+    function openProModal() {
+      if (!proModal) return;
+      proModal.classList.remove('hidden');
+      proModal.setAttribute('aria-hidden', 'false');
+      if (proProcessing) proProcessing.classList.add('hidden');
+      if (proSuccess) proSuccess.classList.add('hidden');
+      if (proModalBody) proModalBody.style.display = '';
+    }
+
+    function closeProModal() {
+      if (proModal) {
+        proModal.classList.add('hidden');
+        proModal.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    if (btnUpgradeHeader) btnUpgradeHeader.addEventListener('click', openProModal);
+    if (btnUpgradeSidebar) btnUpgradeSidebar.addEventListener('click', openProModal);
+    if (proClose) proClose.addEventListener('click', closeProModal);
+    if (proBackdrop) proBackdrop.addEventListener('click', closeProModal);
+
+    if (proSubscribe) {
+      proSubscribe.addEventListener('click', function () {
+        if (!proProcessing || !proSuccess) return;
+        proModalBody.style.display = 'none';
+        proProcessing.classList.remove('hidden');
+        proSuccess.classList.add('hidden');
+        setTimeout(function () {
+          localStorage.setItem(USER_PLAN_KEY, 'PRO');
+          document.dispatchEvent(new CustomEvent('pro-subscribed'));
+          proProcessing.classList.add('hidden');
+          proSuccess.classList.remove('hidden');
+          applyProVisuals();
+        }, 3000);
+      });
+    }
+
+    if (proSuccessClose) {
+      proSuccessClose.addEventListener('click', function () {
+        if (proModalBody) proModalBody.style.display = '';
+        closeProModal();
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && proModal && !proModal.classList.contains('hidden')) closeProModal();
+    });
+
+    applyProVisuals();
+  })();
+  </script>
+
+  <!-- =============================================================================
+       LIVE ACTIVITY TICKER: fetch random users, assign action + product, infinite scroll
+       ============================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      var ACTIONS = ['bought', 'listed', 'traded'];
+      var TICKER_API = 'https://randomuser.me/api/?results=5';
+      var tickerEntries = [];
+
+      function countryToFlag(nat) {
+        if (!nat || nat.length !== 2) return '';
+        return nat.toUpperCase().split('').map(function (c) {
+          return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65);
+        }).join('');
+      }
+
+      function pickRandom(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function randomPrice() {
+        return Math.floor(400 + Math.random() * 4600);
+      }
+
+      function buildTickerDataAndHtml(users, products) {
+        var names = (products || window.products || []).map(function (p) { return p.name; });
+        if (names.length === 0) names = ['Nike Dunk Low', 'Air Jordan 1', 'Yeezy 350'];
+        var entries = [];
+        var htmlParts = (users || []).map(function (u, idx) {
+          var firstName = (u.name && u.name.first) ? u.name.first : 'User';
+          var lastName = (u.name && u.name.last) ? u.name.last : '';
+          var fullName = (firstName + ' ' + lastName).trim();
+          var img = (u.picture && u.picture.thumbnail) ? u.picture.thumbnail : '';
+          var nat = (u.nat || '').slice(0, 2);
+          var flag = countryToFlag(nat);
+          var action = pickRandom(ACTIONS);
+          var shoe = pickRandom(names);
+          var shoeB = shoe;
+          while (names.length > 1 && shoeB === shoe) shoeB = pickRandom(names);
+          var price = randomPrice();
+          var actionText = action === 'bought' ? 'just bought' : action === 'listed' ? 'just listed' : 'just traded';
+          entries.push({
+            user: u,
+            fullName: fullName,
+            img: img,
+            flag: flag,
+            nat: nat,
+            action: action,
+            productName: shoe,
+            productNameB: action === 'traded' ? shoeB : null,
+            price: action !== 'traded' ? price : null
+          });
+          var escapedName = fullName.replace(/</g, '&lt;').replace(/"/g, '&quot;');
+          var escapedShoe = shoe.replace(/</g, '&lt;');
+          return '<button type="button" class="activity-ticker-item inline-flex items-center gap-2 shrink-0 text-sm text-gray-300 whitespace-nowrap cursor-pointer hover:bg-white/10 rounded px-2 py-1 -mx-2 transition-colors text-left border-0" data-ticker-index="' + idx + '" title="Click for details">' +
+            (img ? '<img src="' + img + '" alt="" class="w-6 h-6 rounded-full object-cover bg-white/10" />' : '') +
+            '<span class="text-base">' + flag + '</span>' +
+            '<span class="font-medium text-white">' + escapedName + '</span>' +
+            '<span>' + actionText + '</span>' +
+            '<span class="text-fi-accent">' + escapedShoe + '</span>' +
+            '<span class="text-gray-500 mx-2">•</span>' +
+            '</button>';
+        });
+        return { entries: entries, html: htmlParts.join('') };
+      }
+
+      function openActivityDetail(index) {
+        var modal = document.getElementById('activity-detail-modal');
+        var body = document.getElementById('activity-detail-body');
+        if (!modal || !body || !tickerEntries.length) return;
+        var i = Number(index, 10);
+        if (isNaN(i) || i < 0 || i >= tickerEntries.length) return;
+        var e = tickerEntries[i];
+        var actionLabel = e.action === 'bought' ? 'Bought' : e.action === 'listed' ? 'Listed' : 'Traded';
+        var detailHtml = '<div class="flex items-center gap-3">' +
+          (e.img ? '<img src="' + e.img + '" alt="" class="w-14 h-14 rounded-full object-cover bg-white/10" />' : '') +
+          '<div><span class="text-2xl">' + e.flag + '</span><p class="font-semibold text-white text-lg">' + (e.fullName || '').replace(/</g, '&lt;') + '</p></div></div>' +
+          '<div class="border-t border-white/10 pt-4">' +
+          '<p class="text-gray-400 text-sm">Action</p><p class="text-white font-medium">' + actionLabel + '</p>' +
+          '</div>' +
+          '<div class="border-t border-white/10 pt-4">' +
+          '<p class="text-gray-400 text-sm">Item</p><p class="text-fi-accent font-medium">' + (e.productName || '').replace(/</g, '&lt;') + '</p>' +
+          '</div>';
+        if (e.action === 'traded' && e.productNameB) {
+          detailHtml += '<div class="border-t border-white/10 pt-4">' +
+            '<p class="text-gray-400 text-sm">Traded for</p><p class="text-white font-medium">' + (e.productNameB || '').replace(/</g, '&lt;') + '</p></div>';
+        } else if (e.price != null) {
+          var priceCR = Number(e.price);
+          var currency = localStorage.getItem('ps-currency') || 'USD';
+          var usdToIls = parseFloat(localStorage.getItem('ps-usd-to-ils-rate'), 10) || 3.7;
+          var crToUsd = 0.01;
+          var priceUsd = priceCR * crToUsd;
+          var priceDisplay = currency === 'ILS' ? (priceUsd * usdToIls) : priceUsd;
+          var symbol = currency === 'ILS' ? '₪' : '$';
+          var equiv = symbol + Math.round(priceDisplay).toLocaleString();
+          detailHtml += '<div class="border-t border-white/10 pt-4">' +
+            '<p class="text-gray-400 text-sm">' + (e.action === 'bought' ? 'Price paid' : 'List price') + '</p><p class="text-fi-success font-bold text-xl">' + priceCR.toLocaleString() + ' CR <span class="text-white font-normal text-base">(' + equiv + ')</span></p></div>';
+        }
+        body.innerHTML = detailHtml;
+        modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeActivityDetail() {
+        var modal = document.getElementById('activity-detail-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      var inner = document.getElementById('activity-ticker-inner');
+      if (!inner) return;
+
+      inner.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.activity-ticker-item');
+        if (btn && btn.getAttribute('data-ticker-index') != null) {
+          ev.preventDefault();
+          openActivityDetail(btn.getAttribute('data-ticker-index'));
+        }
+      });
+
+      var activityDetailClose = document.getElementById('activity-detail-close');
+      var activityDetailBackdrop = document.getElementById('activity-detail-backdrop');
+      if (activityDetailClose) activityDetailClose.addEventListener('click', closeActivityDetail);
+      if (activityDetailBackdrop) activityDetailBackdrop.addEventListener('click', closeActivityDetail);
+
+      fetch(TICKER_API)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var users = (data && data.results) ? data.results : [];
+          var products = window.products || [];
+          var result = buildTickerDataAndHtml(users, products);
+          tickerEntries = result.entries;
+          if (!result.html) {
+            inner.innerHTML = '<span class="text-gray-500 text-sm">Loading activity…</span>';
+            return;
+          }
+          inner.innerHTML = result.html + result.html;
+        })
+        .catch(function () {
+          var products = window.products || [];
+          var fallback = [
+            { name: { first: 'Alex', last: 'Chen' }, picture: { thumbnail: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex' }, nat: 'US' },
+            { name: { first: 'Sam', last: 'Smith' }, picture: { thumbnail: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sam' }, nat: 'GB' },
+            { name: { first: 'Jordan', last: 'Lee' }, picture: { thumbnail: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jordan' }, nat: 'KR' }
+          ];
+          var result = buildTickerDataAndHtml(fallback, products);
+          tickerEntries = result.entries;
+          inner.innerHTML = result.html + result.html;
+        });
+    })();
+  </script>
+
+  <!-- ========== Daily Lucky Wheel (weighted odds, 24h cooldown, rewards) ========== -->
+  <script>
+  (function () {
+    'use strict';
+    var LUCKY_KEY = 'fashionInsider_luckyLastSpin';
+    var COOLDOWN_MS = 24 * 60 * 60 * 1000;
+    var SPIN_DURATION_MS = 6000;
+
+    var SEGMENTS = [
+      { label: 'Try Again Tomorrow', weight: 40, color: '#6b7280', type: 'tryagain' },
+      { label: '1 Credit', weight: 30, color: '#2ea043', type: 'credits', amount: 1 },
+      { label: '5% Discount', weight: 15, color: '#a371f7', type: 'discount' },
+      { label: '10 Credits', weight: 10, color: '#58a6ff', type: 'credits', amount: 10 },
+      { label: 'Free Common Item', weight: 4, color: '#d29922', type: 'item', itemType: 'common' },
+      { label: 'Mystery Box', weight: 0.9, color: '#f85149', type: 'mystery' },
+      { label: '500 Credits', weight: 0.1, color: '#fbbf24', type: 'credits', amount: 500 },
+      { label: 'Jackpot: Jordan 1 Chicago', weight: 0.001, color: '#dc2626', type: 'item', itemType: 'jackpot' }
+    ];
+
+    var cumulative = [];
+    var sum = 0;
+    for (var s = 0; s < SEGMENTS.length; s++) {
+      sum += SEGMENTS[s].weight;
+      cumulative.push(sum);
+    }
+
+    function pickSegment() {
+      var r = Math.random() * sum;
+      for (var i = 0; i < cumulative.length; i++) {
+        if (r < cumulative[i]) return i;
+      }
+      return 0;
+    }
+
+    function buildWheel() {
+      var segEl = document.getElementById('lucky-wheel-segments');
+      var labelsEl = document.getElementById('lucky-wheel-labels');
+      if (!segEl || !labelsEl) return;
+      var gradient = SEGMENTS.map(function (s) { return s.color; }).join(', ');
+      segEl.style.background = 'conic-gradient(' + SEGMENTS.map(function (s, i) {
+        return s.color + ' ' + (i * 45) + 'deg ' + ((i + 1) * 45) + 'deg';
+      }).join(', ') + ')';
+      labelsEl.innerHTML = '';
+      var radiusPercent = 65;
+      SEGMENTS.forEach(function (seg, i) {
+        var span = document.createElement('span');
+        span.className = 'lucky-wheel-label';
+        span.textContent = seg.label;
+        var deg = i * 45 + 22.5;
+        var rad = deg * Math.PI / 180;
+        var offset = (radiusPercent / 100) * 50;
+        var left = 50 + offset * Math.sin(rad);
+        var top = 50 - offset * Math.cos(rad);
+        span.style.left = left + '%';
+        span.style.top = top + '%';
+        span.style.transform = 'translate(-50%, -50%) rotate(' + deg + 'deg)';
+        labelsEl.appendChild(span);
+      });
+    }
+
+    function updateFabState() {
+      if (!fab) return;
+      var next = getNextSpinTime();
+      if (next > 0 && Date.now() < next) {
+        fab.classList.add('lucky-wheel-fab--minimized');
+      } else {
+        fab.classList.remove('lucky-wheel-fab--minimized');
+      }
+    }
+
+    var modal = document.getElementById('lucky-wheel-modal');
+    var fab = document.getElementById('lucky-wheel-fab');
+    var closeBtn = document.getElementById('lucky-wheel-close');
+    var backdrop = document.getElementById('lucky-wheel-backdrop');
+    var wheelEl = document.getElementById('lucky-wheel-wheel');
+    var spinBtn = document.getElementById('lucky-wheel-spin-btn');
+    var countdownWrap = document.getElementById('lucky-wheel-countdown');
+    var timerEl = document.getElementById('lucky-wheel-timer');
+    var resultOverlay = document.getElementById('lucky-wheel-result-overlay');
+    var resultText = document.getElementById('lucky-wheel-result-text');
+    var resultSub = document.getElementById('lucky-wheel-result-sub');
+    var resultCloseBtn = document.getElementById('lucky-wheel-result-close');
+
+    var countdownInterval = null;
+    var isSpinning = false;
+
+    function getNextSpinTime() {
+      var last = localStorage.getItem(LUCKY_KEY);
+      if (!last) return 0;
+      return parseInt(last, 10) + COOLDOWN_MS;
+    }
+
+    function updateCountdown() {
+      var next = getNextSpinTime();
+      if (next <= 0) return;
+      var now = Date.now();
+      if (now >= next) {
+        localStorage.removeItem(LUCKY_KEY);
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+        if (countdownWrap) countdownWrap.classList.add('hidden');
+        if (spinBtn) { spinBtn.disabled = false; spinBtn.textContent = 'SPIN THE WHEEL'; }
+        return;
+      }
+      var left = next - now;
+      var h = Math.floor(left / 3600000);
+      var m = Math.floor((left % 3600000) / 60000);
+      var sec = Math.floor((left % 60000) / 1000);
+      var str = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+      if (timerEl) timerEl.textContent = str;
+    }
+
+    function openWheelModal() {
+      if (!modal) return;
+      buildWheel();
+      wheelEl.style.transition = 'none';
+      wheelEl.style.transform = 'rotate(0deg)';
+      wheelEl.offsetHeight;
+      wheelEl.style.transition = 'transform ' + (SPIN_DURATION_MS / 1000) + 's cubic-bezier(0.15, 0.85, 0.1, 1)';
+      if (resultOverlay) resultOverlay.classList.add('hidden');
+      var next = getNextSpinTime();
+      var now = Date.now();
+      if (next > 0 && now < next) {
+        if (countdownWrap) countdownWrap.classList.remove('hidden');
+        if (spinBtn) { spinBtn.disabled = true; spinBtn.textContent = 'Next spin in 24h'; }
+        updateCountdown();
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(updateCountdown, 1000);
+      } else {
+        if (countdownWrap) countdownWrap.classList.add('hidden');
+        if (spinBtn) { spinBtn.disabled = false; spinBtn.textContent = 'SPIN THE WHEEL'; }
+      }
+      updateFabState();
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeWheelModal() {
+      if (modal) { modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); }
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    }
+
+    function triggerConfetti() {
+      var container = document.getElementById('confetti-container');
+      if (!container) return;
+      container.innerHTML = '';
+      var colors = ['#58a6ff', '#2ea043', '#f85149', '#d29922', '#a371f7', '#fbbf24'];
+      for (var i = 0; i < 50; i++) {
+        var piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = Math.random() * 0.5 + 's';
+        piece.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+        container.appendChild(piece);
+      }
+      setTimeout(function () { container.innerHTML = ''; }, 4000);
+    }
+
+    function createClosetItem(name, imageUrl) {
+      return {
+        id: 'listing_' + Date.now(),
+        name: name,
+        priceILS: 0,
+        condition: 'new',
+        isLuxury: false,
+        imageData: imageUrl || null,
+        status: 'live',
+        createdAt: Date.now()
+      };
+    }
+
+    function applyReward(segmentIndex) {
+      var seg = SEGMENTS[segmentIndex];
+      if (!seg) return;
+      if (seg.type === 'credits' && seg.amount) {
+        document.dispatchEvent(new CustomEvent('lucky-wheel-credits', { detail: { amount: seg.amount } }));
+      } else if (seg.type === 'item') {
+        var item;
+        if (seg.itemType === 'jackpot') {
+          var p = window.products && window.products.find(function (x) { return x.name && x.name.indexOf('Chicago') !== -1; });
+          item = createClosetItem(p ? p.name : 'Air Jordan 1 Retro High Chicago', p ? p.imageURL : null);
+        } else {
+          var names = ['Nike Air Force 1 White', 'Adidas Samba White', 'Converse Chuck 70'];
+          var common = window.products && window.products.find(function (x) { return names.indexOf(x.name) !== -1; }) || { name: 'Free Common Item', imageURL: null };
+          item = createClosetItem(common.name, common.imageURL);
+        }
+        document.dispatchEvent(new CustomEvent('lucky-wheel-item', { detail: { item: item } }));
+      }
+    }
+
+    function spinWheel() {
+      if (isSpinning) return;
+      var next = getNextSpinTime();
+      if (next > 0 && Date.now() < next) return;
+      isSpinning = true;
+      var segmentIndex = pickSegment();
+      var seg = SEGMENTS[segmentIndex];
+      var totalDeg = 360 * 5 + (337.5 - segmentIndex * 45);
+      wheelEl.style.transform = 'rotate(' + totalDeg + 'deg)';
+      spinBtn.disabled = true;
+      spinBtn.textContent = 'Spinning…';
+      setTimeout(function () {
+        isSpinning = false;
+        localStorage.setItem(LUCKY_KEY, String(Date.now()));
+        if (seg.type !== 'tryagain') {
+          triggerConfetti();
+          applyReward(segmentIndex);
+        }
+        if (resultText) resultText.textContent = seg.type === 'tryagain' ? 'Try Again Tomorrow' : 'You won: ' + seg.label + '!';
+        if (resultSub) resultSub.textContent = seg.type === 'tryagain' ? 'Come back in 24 hours for another spin.' : (seg.type === 'credits' ? seg.amount + ' CR added to your balance.' : seg.type === 'item' ? 'Check My Closet!' : 'Use it on your next purchase.');
+        if (resultOverlay) resultOverlay.classList.remove('hidden');
+        spinBtn.textContent = 'Next spin in 24h';
+        spinBtn.disabled = true;
+        if (countdownWrap) countdownWrap.classList.remove('hidden');
+        updateCountdown();
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(updateCountdown, 1000);
+        updateFabState();
+      }, SPIN_DURATION_MS + 200);
+    }
+
+    if (fab) fab.addEventListener('click', openWheelModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeWheelModal);
+    if (backdrop) backdrop.addEventListener('click', closeWheelModal);
+    if (spinBtn) spinBtn.addEventListener('click', spinWheel);
+    if (resultCloseBtn) resultCloseBtn.addEventListener('click', closeWheelModal);
+    buildWheel();
+    updateFabState();
+  })();
+  </script>
+
+  <!-- ========== PlayStation-Style User Settings Modal (standalone) ========== -->
+  <div id="ps-settings-modal" class="ps-modal" aria-hidden="true">
+    <div class="ps-modal-backdrop" id="ps-settings-backdrop"></div>
+    <div class="ps-modal-panel">
+      <div class="ps-modal-header">
+        <h2 class="ps-modal-title">Profile &amp; Settings</h2>
+        <button type="button" class="ps-modal-close" id="ps-settings-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="ps-modal-body">
+        <section class="ps-section">
+          <h3 class="ps-section-title">Profile</h3>
+          <label class="ps-label">Username</label>
+          <input type="text" id="ps-username-input" class="ps-input" placeholder="Your name" maxlength="24" />
+          <label class="ps-label">Search Location</label>
+          <div class="ps-city-wrap">
+            <input type="text" id="ps-city-input" class="ps-input ps-city-input" placeholder="Type city or address (min 3 characters)" autocomplete="off" maxlength="256" />
+            <button type="button" id="ps-city-use-location" class="ps-btn-location" title="Use my current location" aria-label="Use my location">
+              <svg class="ps-btn-location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </button>
+            <div id="ps-city-dropdown" class="ps-city-dropdown hidden" role="listbox"></div>
+          </div>
+          <label class="ps-label">Country</label>
+          <input type="text" id="ps-country-input" class="ps-input" placeholder="e.g. Israel" maxlength="64" />
+          <label class="ps-label">Profile picture</label>
+          <div class="ps-avatar-grid">
+            <button type="button" class="ps-avatar-option selected" data-avatar="1" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" aria-label="Avatar 1">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="" />
+            </button>
+            <button type="button" class="ps-avatar-option" data-avatar="2" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" aria-label="Avatar 2">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" alt="" />
+            </button>
+            <button type="button" class="ps-avatar-option" data-avatar="3" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" aria-label="Avatar 3">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Luna" alt="" />
+            </button>
+            <button type="button" class="ps-avatar-option" data-avatar="4" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" aria-label="Avatar 4">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" alt="" />
+            </button>
+          </div>
+        </section>
+        <section class="ps-section">
+          <h3 class="ps-section-title">Settings</h3>
+          <div class="ps-setting-row">
+            <span class="ps-setting-label">Currency</span>
+            <div class="ps-toggle-wrap">
+              <span class="ps-toggle-label">$ USD</span>
+              <button type="button" class="ps-toggle" id="ps-currency-toggle" role="switch" aria-checked="false">
+                <span class="ps-toggle-thumb"></span>
+              </button>
+              <span class="ps-toggle-label">₪ ILS</span>
+              <span id="ps-currency-updating" class="ps-updating hidden">Updating…</span>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="ps-modal-footer">
+        <button type="button" class="ps-btn ps-btn-secondary" id="ps-settings-cancel">Cancel</button>
+        <button type="button" class="ps-btn ps-btn-primary" id="ps-settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    .ps-modal { position: fixed; inset: 0; z-index: 300; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .ps-modal.active { display: flex; }
+    .ps-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .ps-modal-panel { position: relative; width: 100%; max-width: 420px; max-height: 90vh; background: rgba(28, 28, 32, 0.92); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; }
+    .ps-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .ps-modal-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff; }
+    .ps-modal-close { background: none; border: none; color: #8b949e; font-size: 1.75rem; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .ps-modal-close:hover { color: #fff; }
+    .ps-modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+    .ps-section { margin-bottom: 24px; }
+    .ps-section:last-child { margin-bottom: 0; }
+    .ps-section-title { margin: 0 0 12px 0; font-size: 0.75rem; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ps-label { display: block; margin-bottom: 6px; font-size: 0.8rem; color: #c9d1d9; }
+    .ps-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff; font-size: 0.95rem; box-sizing: border-box; }
+    .ps-input:focus { outline: none; border-color: #58a6ff; }
+    .ps-input::placeholder { color: #6e7681; }
+    .ps-city-wrap { position: relative; }
+    .ps-city-wrap .ps-city-input { padding-right: 44px; }
+    .ps-btn-location { position: absolute; top: 50%; right: 8px; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px; background: rgba(255,255,255,0.08); color: #8b949e; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s; }
+    .ps-btn-location:hover { background: rgba(255,255,255,0.12); color: #58a6ff; }
+    .ps-btn-location:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ps-btn-location-icon { width: 18px; height: 18px; }
+    .ps-city-dropdown { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; max-height: 220px; overflow-y: auto; background: rgba(18, 18, 22, 0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 10; }
+    .ps-city-dropdown.hidden { display: none; }
+    .ps-city-suggestion { display: block; width: 100%; padding: 10px 14px; text-align: left; border: none; background: none; color: #e6edf3; font-size: 0.9rem; cursor: pointer; transition: background 0.15s; border-radius: 0; }
+    .ps-city-suggestion:hover, .ps-city-suggestion:focus { background: rgba(88, 166, 255, 0.15); outline: none; }
+    .ps-city-suggestion:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .ps-avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }
+    .ps-avatar-option { padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.06); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
+    .ps-avatar-option:hover { border-color: rgba(255,255,255,0.2); transform: scale(1.02); }
+    .ps-avatar-option.selected { border-color: #58a6ff; box-shadow: 0 0 0 1px #58a6ff; }
+    .ps-avatar-option img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+    .ps-setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+    .ps-setting-label { font-size: 0.9rem; color: #e6edf3; }
+    .ps-toggle-wrap { display: flex; align-items: center; gap: 10px; }
+    .ps-toggle-label { font-size: 0.85rem; color: #8b949e; }
+    .ps-toggle { width: 48px; height: 26px; padding: 0; border: none; border-radius: 13px; background: rgba(255,255,255,0.15); cursor: pointer; position: relative; transition: background 0.2s; }
+    .ps-toggle[aria-checked="true"] { background: #58a6ff; }
+    .ps-toggle-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .ps-toggle[aria-checked="true"] .ps-toggle-thumb { transform: translateX(22px); }
+    .ps-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .ps-btn { padding: 10px 20px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; }
+    .ps-btn-secondary { background: rgba(255,255,255,0.1); color: #e6edf3; }
+    .ps-btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .ps-btn-primary { background: #58a6ff; color: #fff; }
+    .ps-btn-primary:hover { background: #79b8ff; }
+    .ps-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .ps-updating { font-size: 0.75rem; color: #58a6ff; margin-left: 6px; }
+    .ps-updating.hidden { display: none; }
+  </style>
+  <script>
+  (function() {
+    var modal = document.getElementById('ps-settings-modal');
+    var backdrop = document.getElementById('ps-settings-backdrop');
+    var openBtn = document.getElementById('user-profile-btn');
+    var closeBtn = document.getElementById('ps-settings-close');
+    var cancelBtn = document.getElementById('ps-settings-cancel');
+    var saveBtn = document.getElementById('ps-settings-save');
+    var usernameInput = document.getElementById('ps-username-input');
+    var cityInput = document.getElementById('ps-city-input');
+    var countryInput = document.getElementById('ps-country-input');
+    var currencyToggle = document.getElementById('ps-currency-toggle');
+    var cityDropdown = document.getElementById('ps-city-dropdown');
+    var locationBtn = document.getElementById('ps-city-use-location');
+    var CURRENCY_USD = '$', CURRENCY_ILS = '₪';
+    var NOMINATIM_UA_PS = 'FashionInsiderApp/1.0 (profile location)';
+    var citySuggestionsAbort = null;
+    var cityDebounceTimer = null;
+
+    function fetchCitySuggestions(q, done) {
+      if (citySuggestionsAbort) citySuggestionsAbort.abort();
+      citySuggestionsAbort = new AbortController();
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=5';
+      fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': NOMINATIM_UA_PS }, signal: citySuggestionsAbort.signal })
+        .then(function(r) { return r.json(); })
+        .then(function(arr) { done(null, Array.isArray(arr) ? arr : []); })
+        .catch(function(err) { done(err, []); });
+    }
+
+    function showCitySuggestions(items) {
+      if (!cityDropdown) return;
+      cityDropdown.innerHTML = '';
+      cityDropdown.classList.remove('hidden');
+      items.forEach(function(item) {
+        var displayName = (item.display_name || '').trim() || 'Unnamed';
+        var lat = item.lat, lon = item.lon;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ps-city-suggestion';
+        btn.setAttribute('role', 'option');
+        btn.textContent = displayName;
+        btn.setAttribute('data-display-name', displayName);
+        btn.setAttribute('data-lat', lat);
+        btn.setAttribute('data-lon', lon);
+        btn.addEventListener('click', function() {
+          var name = btn.getAttribute('data-display-name');
+          var latVal = btn.getAttribute('data-lat');
+          var lonVal = btn.getAttribute('data-lon');
+          if (cityInput) cityInput.value = name;
+          if (latVal != null && lonVal != null) {
+            localStorage.setItem('userLat', latVal);
+            localStorage.setItem('userLon', lonVal);
+          }
+          cityDropdown.classList.add('hidden');
+          cityDropdown.innerHTML = '';
+        });
+        cityDropdown.appendChild(btn);
+      });
+    }
+
+    function hideCityDropdown() {
+      if (cityDropdown) { cityDropdown.classList.add('hidden'); cityDropdown.innerHTML = ''; }
+    }
+
+    if (cityInput && cityDropdown) {
+      cityInput.addEventListener('input', function() {
+        var val = (cityInput.value || '').trim();
+        if (cityDebounceTimer) clearTimeout(cityDebounceTimer);
+        if (val.length <= 2) {
+          hideCityDropdown();
+          return;
+        }
+        cityDebounceTimer = setTimeout(function() {
+          cityDebounceTimer = null;
+          fetchCitySuggestions(val, function(err, items) {
+            if (err) { hideCityDropdown(); return; }
+            showCitySuggestions(items);
+          });
+        }, 300);
+      });
+      cityInput.addEventListener('blur', function() {
+        setTimeout(hideCityDropdown, 200);
+      });
+      cityInput.addEventListener('focus', function() {
+        var val = (cityInput.value || '').trim();
+        if (val.length > 2) fetchCitySuggestions(val, function(err, items) {
+          if (!err && items.length) showCitySuggestions(items);
+        });
+      });
+    }
+
+    if (locationBtn) {
+      locationBtn.addEventListener('click', function() {
+        if (!navigator.geolocation) {
+          alert('Geolocation is not supported by your browser.');
+          return;
+        }
+        locationBtn.disabled = true;
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            var url = 'https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json';
+            fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': NOMINATIM_UA_PS } })
+              .then(function(r) { return r.json(); })
+              .then(function(data) {
+                var displayName = (data.display_name || data.name || '').trim() || 'Current location';
+                if (cityInput) cityInput.value = displayName;
+                localStorage.setItem('userLat', String(lat));
+                localStorage.setItem('userLon', String(lon));
+                localStorage.setItem('ps-city', displayName);
+                hideCityDropdown();
+              })
+              .catch(function() {
+                if (cityInput) cityInput.value = 'Current location';
+                localStorage.setItem('userLat', String(lat));
+                localStorage.setItem('userLon', String(lon));
+                localStorage.setItem('ps-city', 'Current location');
+              })
+              .finally(function() { locationBtn.disabled = false; });
+          },
+          function() {
+            alert('Could not get your location. Check permissions or try again.');
+            locationBtn.disabled = false;
+          }
+        );
+      });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && cityDropdown && !cityDropdown.classList.contains('hidden')) hideCityDropdown();
+    });
+
+    function openModal() {
+      if (!modal) return;
+      var nameEl = document.getElementById('display-username');
+      usernameInput.value = (nameEl && nameEl.textContent) ? nameEl.textContent.trim() : '';
+      if (cityInput) cityInput.value = localStorage.getItem('ps-city') || '';
+      if (countryInput) countryInput.value = localStorage.getItem('ps-country') || '';
+      hideCityDropdown();
+      currencyToggle.setAttribute('aria-checked', localStorage.getItem('ps-currency') === 'ILS' ? 'true' : 'false');
+      var savedAvatar = localStorage.getItem('ps-avatar') || '1';
+      document.querySelectorAll('.ps-avatar-option').forEach(function(el) {
+        el.classList.toggle('selected', el.getAttribute('data-avatar') === savedAvatar);
+      });
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+    function closeModal() {
+      if (modal) { modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
+    }
+
+    function openModalIfAllowed() { if (modal && !modal.classList.contains('active')) openModal(); }
+    if (openBtn) {
+      openBtn.addEventListener('click', openModalIfAllowed);
+      openBtn.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModalIfAllowed(); } });
+    }
+    document.querySelectorAll('.ps-open-profile').forEach(function(el) {
+      el.addEventListener('click', openModalIfAllowed);
+      el.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModalIfAllowed(); } });
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    if (currencyToggle) currencyToggle.addEventListener('click', function() {
+      var next = currencyToggle.getAttribute('aria-checked') === 'true' ? 'false' : 'true';
+      currencyToggle.setAttribute('aria-checked', next);
+    });
+
+    document.querySelectorAll('.ps-avatar-option').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.ps-avatar-option').forEach(function(b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+      });
+    });
+
+    var updatingEl = document.getElementById('ps-currency-updating');
+    var EXCHANGE_API = 'https://api.exchangerate-api.com/v4/latest/USD';
+
+    function applyCurrencyAndClose(name, avatarId, avatarSrc, isILS, rate) {
+      var city = (cityInput && cityInput.value) ? cityInput.value.trim() : '';
+      var country = (countryInput && countryInput.value) ? countryInput.value.trim() : '';
+      localStorage.setItem('ps-username', name);
+      localStorage.setItem('ps-city', city);
+      localStorage.setItem('ps-country', country);
+      localStorage.setItem('ps-currency', isILS ? 'ILS' : 'USD');
+      if (isILS && rate != null) localStorage.setItem('ps-usd-to-ils-rate', String(rate));
+      localStorage.setItem('ps-avatar', avatarId);
+      var displayName = document.getElementById('display-username');
+      var displayLocation = document.getElementById('display-location');
+      var displayCur = document.getElementById('display-currency');
+      var displayAvatar = document.getElementById('display-avatar');
+      if (displayName) displayName.textContent = name;
+      if (displayLocation) {
+        if (city && country) displayLocation.textContent = city + ', ' + country;
+        else if (city) displayLocation.textContent = city;
+        else if (country) displayLocation.textContent = country;
+        else displayLocation.textContent = '';
+      }
+      if (displayCur) displayCur.textContent = isILS ? CURRENCY_ILS : CURRENCY_USD;
+      if (displayAvatar) displayAvatar.src = avatarSrc;
+      window.currentCurrency = isILS ? 'ILS' : 'USD';
+      window.usdToIlsRate = isILS ? rate : 1;
+      document.dispatchEvent(new CustomEvent('currency-changed'));
+      if (updatingEl) updatingEl.classList.add('hidden');
+      if (saveBtn) saveBtn.disabled = false;
+      closeModal();
+    }
+
+    if (saveBtn) saveBtn.addEventListener('click', function() {
+      var name = (usernameInput.value || '').trim() || 'User';
+      var isILS = currencyToggle.getAttribute('aria-checked') === 'true';
+      var sel = document.querySelector('.ps-avatar-option.selected');
+      var avatarId = (sel && sel.getAttribute('data-avatar')) || '1';
+      var avatarSrc = (sel && sel.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+
+      if (isILS) {
+        if (updatingEl) updatingEl.classList.remove('hidden');
+        if (saveBtn) saveBtn.disabled = true;
+        fetch(EXCHANGE_API)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var rate = data.rates && typeof data.rates.ILS === 'number' ? data.rates.ILS : 3.7;
+            applyCurrencyAndClose(name, avatarId, avatarSrc, true, rate);
+          })
+          .catch(function() {
+            var rate = parseFloat(localStorage.getItem('ps-usd-to-ils-rate'), 10) || 3.7;
+            applyCurrencyAndClose(name, avatarId, avatarSrc, true, rate);
+            if (updatingEl) updatingEl.classList.add('hidden');
+            if (saveBtn) saveBtn.disabled = false;
+          });
+      } else {
+        localStorage.setItem('ps-usd-to-ils-rate', '1');
+        applyCurrencyAndClose(name, avatarId, avatarSrc, false, 1);
+      }
+    });
+
+    function applySaved() {
+      var name = localStorage.getItem('ps-username');
+      var city = localStorage.getItem('ps-city') || '';
+      var country = localStorage.getItem('ps-country') || '';
+      var isILS = localStorage.getItem('ps-currency') === 'ILS';
+      var rate = parseFloat(localStorage.getItem('ps-usd-to-ils-rate'), 10) || 1;
+      window.currentCurrency = isILS ? 'ILS' : 'USD';
+      window.usdToIlsRate = isILS ? rate : 1;
+      var avatarId = localStorage.getItem('ps-avatar') || '1';
+      var avatarEl = document.querySelector('.ps-avatar-option[data-avatar="' + avatarId + '"]');
+      var avatarSrc = (avatarEl && avatarEl.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+      var elName = document.getElementById('display-username');
+      var elLocation = document.getElementById('display-location');
+      var elCur = document.getElementById('display-currency');
+      var elAvatar = document.getElementById('display-avatar');
+      if (name && elName) elName.textContent = name;
+      if (elLocation) {
+        if (city && country) elLocation.textContent = city + ', ' + country;
+        else if (city) elLocation.textContent = city;
+        else if (country) elLocation.textContent = country;
+        else elLocation.textContent = '';
+      }
+      if (elCur) elCur.textContent = isILS ? CURRENCY_ILS : CURRENCY_USD;
+      if (elAvatar) elAvatar.src = avatarSrc;
+      document.dispatchEvent(new CustomEvent('currency-changed'));
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applySaved);
+    else applySaved();
+    })();
+  </script>
+</body>
+</html>
