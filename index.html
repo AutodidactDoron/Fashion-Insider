@@ -167,8 +167,8 @@
       <div class="flex items-center gap-2">
         <span id="pro-crown-header" class="pro-crown hidden text-lg" title="PRO Member" aria-hidden="true">👑</span>
         <span id="verified-checkmark-header" class="verified-badge hidden" title="Verified" aria-label="Verified"><svg class="verified-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
-        <div id="header-profile-icon" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center ps-open-profile cursor-pointer hover:bg-white/15 transition-colors display-avatar" data-tooltip="Open profile and settings" role="button" tabindex="0" title="Open profile and settings">
-        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+        <div id="header-profile-icon" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden ps-open-profile cursor-pointer hover:bg-white/15 transition-colors display-avatar shrink-0" data-tooltip="Open profile and settings" role="button" tabindex="0" title="Open profile and settings">
+          <img id="header-avatar-img" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="" class="w-full h-full object-cover" />
         </div>
       </div>
       <!-- BUY CREDITS / TOP UP -->
@@ -2873,7 +2873,7 @@
           <label class="ps-label">Country</label>
           <input type="text" id="ps-country-input" class="ps-input" placeholder="e.g. Israel" maxlength="64" />
           <label class="ps-label">Profile picture</label>
-          <div class="ps-avatar-grid">
+          <div class="ps-avatar-grid" id="ps-avatar-grid">
             <button type="button" class="ps-avatar-option selected" data-avatar="1" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" aria-label="Avatar 1">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="" />
             </button>
@@ -2886,6 +2886,16 @@
             <button type="button" class="ps-avatar-option" data-avatar="4" data-src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" aria-label="Avatar 4">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" alt="" />
             </button>
+            <button type="button" class="ps-avatar-option ps-avatar-custom" data-avatar="custom" data-src="" id="ps-avatar-custom-btn" aria-label="Custom photo">
+              <img id="ps-avatar-custom-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238b949e'%3E%3Cpath d='M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0 3.2 3.2 0 1 0-6.4 0'/%3E%3Cpath d='M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z'/%3E%3C/svg%3E" alt="" />
+            </button>
+          </div>
+          <p class="ps-label mt-3 mb-1">Custom photo</p>
+          <div class="ps-custom-photo-actions">
+            <input type="file" id="ps-avatar-file-gallery" accept="image/*" class="hidden" />
+            <input type="file" id="ps-avatar-file-camera" accept="image/*" capture="user" class="hidden" />
+            <button type="button" id="ps-avatar-from-camera" class="ps-btn ps-btn-secondary">Take photo</button>
+            <button type="button" id="ps-avatar-from-gallery" class="ps-btn ps-btn-secondary">Choose from gallery</button>
           </div>
         </section>
         <section class="ps-section">
@@ -2912,6 +2922,19 @@
         <button type="button" class="ps-btn ps-btn-secondary" id="ps-settings-cancel">Cancel</button>
         <button type="button" class="ps-btn ps-btn-primary" id="ps-settings-save">Save</button>
       </div>
+    </div>
+  </div>
+  <!-- Camera capture overlay for "Take photo" (getUserMedia) -->
+  <div id="ps-camera-overlay" class="ps-camera-overlay hidden" aria-hidden="true">
+    <div class="ps-camera-backdrop"></div>
+    <div class="ps-camera-panel">
+      <h3 class="ps-camera-title">Take a photo</h3>
+      <video id="ps-camera-video" class="ps-camera-video" autoplay playsinline muted></video>
+      <div class="ps-camera-actions">
+        <button type="button" id="ps-camera-cancel" class="ps-btn ps-btn-secondary">Cancel</button>
+        <button type="button" id="ps-camera-capture" class="ps-btn ps-btn-primary">Capture photo</button>
+      </div>
+      <p id="ps-camera-error" class="ps-camera-error hidden"></p>
     </div>
   </div>
   <style>
@@ -2942,11 +2965,12 @@
     .ps-city-suggestion { display: block; width: 100%; padding: 10px 14px; text-align: left; border: none; background: none; color: #e6edf3; font-size: 0.9rem; cursor: pointer; transition: background 0.15s; border-radius: 0; }
     .ps-city-suggestion:hover, .ps-city-suggestion:focus { background: rgba(88, 166, 255, 0.15); outline: none; }
     .ps-city-suggestion:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .ps-avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }
+    .ps-avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
     .ps-avatar-option { padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.06); cursor: pointer; transition: border-color 0.2s, transform 0.2s; }
     .ps-avatar-option:hover { border-color: rgba(255,255,255,0.2); transform: scale(1.02); }
     .ps-avatar-option.selected { border-color: #58a6ff; box-shadow: 0 0 0 1px #58a6ff; }
     .ps-avatar-option img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+    .ps-custom-photo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .ps-setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
     .ps-setting-label { font-size: 0.9rem; color: #e6edf3; }
     .ps-toggle-wrap { display: flex; align-items: center; gap: 10px; }
@@ -2965,6 +2989,16 @@
     .ps-updating { font-size: 0.75rem; color: #58a6ff; margin-left: 6px; }
     .ps-updating.hidden { display: none; }
     .ps-subscription-status { margin: 0 0 12px 0; font-size: 0.9rem; color: #e6edf3; }
+    .ps-camera-overlay { position: fixed; inset: 0; z-index: 350; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .ps-camera-overlay.active { display: flex; }
+    .ps-camera-overlay.hidden { display: none !important; }
+    .ps-camera-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.85); }
+    .ps-camera-panel { position: relative; background: rgba(28,28,32,0.98); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 20px; max-width: 100%; width: 320px; }
+    .ps-camera-title { margin: 0 0 16px 0; font-size: 1rem; font-weight: 600; color: #fff; }
+    .ps-camera-video { width: 100%; max-height: 50vh; border-radius: 12px; background: #000; object-fit: cover; display: block; }
+    .ps-camera-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+    .ps-camera-error { margin: 12px 0 0 0; font-size: 0.85rem; color: #f85149; }
+    .ps-camera-error.hidden { display: none; }
   </style>
   <script>
   (function() {
@@ -3114,6 +3148,11 @@
       document.querySelectorAll('.ps-avatar-option').forEach(function(el) {
         el.classList.toggle('selected', el.getAttribute('data-avatar') === savedAvatar);
       });
+      if (savedAvatar === 'custom') {
+        var customData = localStorage.getItem('ps-avatar-custom');
+        if (customData && customImg) customImg.src = customData;
+        if (customData && customBtn) customBtn.setAttribute('data-src', customData);
+      }
       if (subscriptionSection) {
         subscriptionSection.classList.toggle('hidden', localStorage.getItem('userPlan') !== 'PRO');
       }
@@ -3159,8 +3198,98 @@
       });
     });
 
+    var inputGallery = document.getElementById('ps-avatar-file-gallery');
+    var inputCamera = document.getElementById('ps-avatar-file-camera');
+    var customImg = document.getElementById('ps-avatar-custom-img');
+    var customBtn = document.getElementById('ps-avatar-custom-btn');
+    function handleAvatarFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      var reader = new FileReader();
+      reader.onload = function() {
+        var dataUrl = reader.result;
+        localStorage.setItem('ps-avatar-custom', dataUrl);
+        if (customBtn) customBtn.setAttribute('data-src', dataUrl);
+        if (customImg) customImg.src = dataUrl;
+        document.querySelectorAll('.ps-avatar-option').forEach(function(b) { b.classList.remove('selected'); });
+        if (customBtn) customBtn.classList.add('selected');
+      };
+      reader.readAsDataURL(file);
+    }
+    if (inputCamera) inputCamera.addEventListener('change', function() { if (this.files && this.files[0]) handleAvatarFile(this.files[0]); this.value = ''; });
+    if (inputGallery) inputGallery.addEventListener('change', function() { if (this.files && this.files[0]) handleAvatarFile(this.files[0]); this.value = ''; });
+
+    var cameraOverlay = document.getElementById('ps-camera-overlay');
+    var cameraVideo = document.getElementById('ps-camera-video');
+    var cameraCancel = document.getElementById('ps-camera-cancel');
+    var cameraCapture = document.getElementById('ps-camera-capture');
+    var cameraError = document.getElementById('ps-camera-error');
+    var cameraStream = null;
+
+    function closeCameraOverlay() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(function(t) { t.stop(); });
+        cameraStream = null;
+      }
+      if (cameraVideo) cameraVideo.srcObject = null;
+      if (cameraOverlay) { cameraOverlay.classList.remove('active'); cameraOverlay.classList.add('hidden'); cameraOverlay.setAttribute('aria-hidden', 'true'); }
+      if (cameraError) { cameraError.classList.add('hidden'); cameraError.textContent = ''; }
+    }
+
+    function applyDataUrlAsAvatar(dataUrl) {
+      localStorage.setItem('ps-avatar-custom', dataUrl);
+      if (customBtn) customBtn.setAttribute('data-src', dataUrl);
+      if (customImg) customImg.src = dataUrl;
+      document.querySelectorAll('.ps-avatar-option').forEach(function(b) { b.classList.remove('selected'); });
+      if (customBtn) customBtn.classList.add('selected');
+    }
+
+    if (document.getElementById('ps-avatar-from-camera')) {
+      document.getElementById('ps-avatar-from-camera').addEventListener('click', function() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          inputCamera && inputCamera.click();
+          return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+          .then(function(stream) {
+            cameraStream = stream;
+            if (cameraError) { cameraError.classList.add('hidden'); cameraError.textContent = ''; }
+            if (cameraVideo) cameraVideo.srcObject = stream;
+            if (cameraOverlay) { cameraOverlay.classList.remove('hidden'); cameraOverlay.classList.add('active'); cameraOverlay.setAttribute('aria-hidden', 'false'); }
+          })
+          .catch(function(err) {
+            if (cameraError) { cameraError.textContent = 'Camera access denied or not available. Use "Choose from gallery" instead.'; cameraError.classList.remove('hidden'); }
+            inputCamera && inputCamera.click();
+          });
+      });
+    }
+    if (document.getElementById('ps-avatar-from-gallery')) {
+      document.getElementById('ps-avatar-from-gallery').addEventListener('click', function() { inputGallery && inputGallery.click(); });
+    }
+    if (cameraCancel) cameraCancel.addEventListener('click', closeCameraOverlay);
+    if (cameraCapture) cameraCapture.addEventListener('click', function() {
+      if (!cameraVideo || !cameraStream) return;
+      var w = cameraVideo.videoWidth;
+      var h = cameraVideo.videoHeight;
+      if (!w || !h) return;
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      closeCameraOverlay();
+      applyDataUrlAsAvatar(dataUrl);
+    });
+
     var updatingEl = document.getElementById('ps-currency-updating');
     var EXCHANGE_API = 'https://api.exchangerate-api.com/v4/latest/USD';
+
+    function setAvatarEverywhere(avatarSrc) {
+      var displayAvatar = document.getElementById('display-avatar');
+      var headerAvatarImg = document.getElementById('header-avatar-img');
+      if (displayAvatar) displayAvatar.src = avatarSrc;
+      if (headerAvatarImg) headerAvatarImg.src = avatarSrc;
+    }
 
     function applyCurrencyAndClose(name, avatarId, avatarSrc, isILS, rate) {
       var city = (cityInput && cityInput.value) ? cityInput.value.trim() : '';
@@ -3174,7 +3303,6 @@
       var displayName = document.getElementById('display-username');
       var displayLocation = document.getElementById('display-location');
       var displayCur = document.getElementById('display-currency');
-      var displayAvatar = document.getElementById('display-avatar');
       if (displayName) displayName.textContent = name;
       if (displayLocation) {
         if (city && country) displayLocation.textContent = city + ', ' + country;
@@ -3183,7 +3311,7 @@
         else displayLocation.textContent = '';
       }
       if (displayCur) displayCur.textContent = isILS ? CURRENCY_ILS : CURRENCY_USD;
-      if (displayAvatar) displayAvatar.src = avatarSrc;
+      setAvatarEverywhere(avatarSrc);
       window.currentCurrency = isILS ? 'ILS' : 'USD';
       window.usdToIlsRate = isILS ? rate : 1;
       document.dispatchEvent(new CustomEvent('currency-changed'));
@@ -3192,12 +3320,19 @@
       closeModal();
     }
 
+    function getSelectedAvatarSrc() {
+      var sel = document.querySelector('.ps-avatar-option.selected');
+      var avatarId = (sel && sel.getAttribute('data-avatar')) || '1';
+      if (avatarId === 'custom') return localStorage.getItem('ps-avatar-custom') || '';
+      return (sel && sel.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+    }
+
     if (saveBtn) saveBtn.addEventListener('click', function() {
       var name = (usernameInput.value || '').trim() || 'User';
       var isILS = currencyToggle.getAttribute('aria-checked') === 'true';
       var sel = document.querySelector('.ps-avatar-option.selected');
       var avatarId = (sel && sel.getAttribute('data-avatar')) || '1';
-      var avatarSrc = (sel && sel.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+      var avatarSrc = getSelectedAvatarSrc() || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
 
       if (isILS) {
         if (updatingEl) updatingEl.classList.remove('hidden');
@@ -3229,12 +3364,16 @@
       window.currentCurrency = isILS ? 'ILS' : 'USD';
       window.usdToIlsRate = isILS ? rate : 1;
       var avatarId = localStorage.getItem('ps-avatar') || '1';
-      var avatarEl = document.querySelector('.ps-avatar-option[data-avatar="' + avatarId + '"]');
-      var avatarSrc = (avatarEl && avatarEl.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+      var avatarSrc;
+      if (avatarId === 'custom') {
+        avatarSrc = localStorage.getItem('ps-avatar-custom') || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+      } else {
+        var avatarEl = document.querySelector('.ps-avatar-option[data-avatar="' + avatarId + '"]');
+        avatarSrc = (avatarEl && avatarEl.getAttribute('data-src')) || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix';
+      }
       var elName = document.getElementById('display-username');
       var elLocation = document.getElementById('display-location');
       var elCur = document.getElementById('display-currency');
-      var elAvatar = document.getElementById('display-avatar');
       if (name && elName) elName.textContent = name;
       if (elLocation) {
         if (city && country) elLocation.textContent = city + ', ' + country;
@@ -3243,7 +3382,7 @@
         else elLocation.textContent = '';
       }
       if (elCur) elCur.textContent = isILS ? CURRENCY_ILS : CURRENCY_USD;
-      if (elAvatar) elAvatar.src = avatarSrc;
+      setAvatarEverywhere(avatarSrc);
       document.dispatchEvent(new CustomEvent('currency-changed'));
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applySaved);
