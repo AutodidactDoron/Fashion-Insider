@@ -137,7 +137,7 @@
         <span class="lucky-wheel-fab-icon text-lg">🎡</span>
         <span class="lucky-wheel-fab-text">Try your luck</span>
       </button>
-      <button type="button" id="btn-upgrade-pro-sidebar" class="btn-upgrade-pro nav-link block w-full text-left py-2.5 px-3 rounded flex items-center justify-center gap-2 font-semibold text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits" aria-label="Upgrade to PRO">UPGRADE TO PRO 👑</button>
+      <button type="button" id="btn-upgrade-pro-sidebar" class="btn-upgrade-pro nav-link block w-full text-left py-3 px-4 rounded flex items-center justify-center gap-2 font-semibold text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity min-h-[48px] min-w-[44px]" data-tooltip="Unlock PRO benefits" aria-label="Upgrade to PRO">UPGRADE TO PRO 👑</button>
     </nav>
   </aside>
 
@@ -145,12 +145,12 @@
        FIXED LAYOUT: TOP HEADER
        Always visible. Contains logo, main nav, and "Buy Credits" (TOP UP) button.
        ============================================================================= -->
-  <header class="fixed top-10 left-0 md:left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-3 sm:px-6 z-20 transition-[left] duration-300">
-    <div class="flex items-center gap-3 sm:gap-8 min-w-0">
-      <button type="button" id="sidebar-toggle" class="md:hidden flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors" aria-label="Open menu">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  <header class="fixed top-10 left-0 md:left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-2 sm:px-6 z-20 transition-[left] duration-300">
+    <div class="flex items-center gap-2 sm:gap-8 shrink-0">
+      <button type="button" id="sidebar-toggle" class="md:hidden flex-shrink-0 w-9 h-9 min-w-[36px] flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors" aria-label="Open menu">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <span class="font-bold text-base sm:text-lg truncate"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
+      <span class="header-logo font-bold text-sm sm:text-lg shrink-0"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
       <!-- Main nav: hidden on mobile (use sidebar); visible from md up -->
       <nav class="hidden md:flex items-center gap-4 lg:gap-6 text-sm">
         <button type="button" data-section="dashboard-section" class="header-nav text-fi-accent border-b-2 border-fi-accent pb-0.5" data-tooltip="View dashboard and marketplace">Dashboard</button>
@@ -160,7 +160,7 @@
         <button type="button" data-section="messages-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Open channels and direct messages">Messages</button>
       </nav>
     </div>
-    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+    <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0 min-w-0">
       <button type="button" id="btn-upgrade-pro-header" class="btn-upgrade-pro hidden sm:inline-flex px-3 py-2 rounded-lg font-semibold text-xs text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits">UPGRADE TO PRO 👑</button>
       <button type="button" id="btn-start-trade" class="hidden sm:inline-flex px-3 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors min-h-[44px] items-center" data-tooltip="Open trade screen to offer items or credits">Start Trade</button>
       <button type="button" id="btn-get-verified" class="hidden md:inline-flex px-3 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors min-h-[44px] items-center" data-tooltip="Verify your ID to get verified badge">Get Verified</button>
@@ -172,10 +172,10 @@
         </div>
       </div>
       <!-- BUY CREDITS / TOP UP -->
-      <div class="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2 pl-2 border-l border-white/10">
-        <div class="text-xs text-gray-400 hidden xs:block">BALANCE</div>
-        <span id="display-currency" class="hidden sm:inline">$</span><span id="header-balance" class="text-white font-semibold text-sm sm:text-base whitespace-nowrap">5,450 CR</span>
-        <button type="button" id="btn-top-up" class="px-3 py-2 rounded-lg bg-fi-success text-white text-xs sm:text-sm font-bold hover:bg-fi-success-hover transition-colors min-h-[44px] flex items-center" data-tooltip="Buy credits to use for trades">TOP UP</button>
+      <div class="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2 pl-2 border-l border-white/10 min-w-0">
+        <div class="text-xs text-gray-400 hidden sm:block">BALANCE</div>
+        <span id="display-currency" class="hidden sm:inline">$</span><span id="header-balance" class="text-white font-semibold text-xs sm:text-base whitespace-nowrap truncate max-w-[72px] sm:max-w-none">5,450 CR</span>
+        <button type="button" id="btn-top-up" class="px-2 sm:px-3 py-2 rounded-lg bg-fi-success text-white text-xs sm:text-sm font-bold hover:bg-fi-success-hover transition-colors min-h-[40px] sm:min-h-[44px] flex items-center shrink-0" data-tooltip="Buy credits to use for trades">TOP UP</button>
       </div>
     </div>
   </header>
@@ -996,9 +996,11 @@
           <p class="pro-modal-overlay-text">Processing Payment...</p>
         </div>
         <div id="pro-modal-success" class="pro-modal-overlay hidden">
-          <p class="pro-modal-success-title">Welcome to the Elite Club! 🥂</p>
-          <p class="pro-modal-success-sub">Your account is now PRO. 500 bonus credits have been added.</p>
-          <button type="button" id="pro-modal-success-close" class="pro-modal-success-btn">Continue</button>
+          <div class="pro-modal-success-content">
+            <p class="pro-modal-success-title">Welcome to the Elite Club! 🥂</p>
+            <p class="pro-modal-success-sub">Your account is now PRO. 500 bonus credits have been added.</p>
+            <button type="button" id="pro-modal-success-close" class="pro-modal-success-btn">Continue</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2373,6 +2375,7 @@
     var proSuccess = document.getElementById('pro-modal-success');
     var proSuccessClose = document.getElementById('pro-modal-success-close');
     var proModalBody = proModal && proModal.querySelector('.pro-modal-body');
+    var proModalPanel = proModal && proModal.querySelector('.pro-modal-panel');
     var btnUpgradeHeader = document.getElementById('btn-upgrade-pro-header');
     var btnUpgradeSidebar = document.getElementById('btn-upgrade-pro-sidebar');
     var crownSidebar = document.getElementById('pro-crown-sidebar');
@@ -2407,6 +2410,7 @@
       if (proProcessing) proProcessing.classList.add('hidden');
       if (proSuccess) proSuccess.classList.add('hidden');
       if (proModalBody) proModalBody.style.display = '';
+      if (proModalPanel) proModalPanel.style.minHeight = '';
     }
 
     function closeProModal() {
@@ -2414,6 +2418,7 @@
         proModal.classList.add('hidden');
         proModal.setAttribute('aria-hidden', 'true');
       }
+      if (proModalPanel) proModalPanel.style.minHeight = '';
     }
 
     if (btnUpgradeHeader) btnUpgradeHeader.addEventListener('click', openProModal);
@@ -2432,6 +2437,7 @@
           document.dispatchEvent(new CustomEvent('pro-subscribed'));
           proProcessing.classList.add('hidden');
           proSuccess.classList.remove('hidden');
+          if (proModalPanel) proModalPanel.style.minHeight = 'min(420px, 85vh)';
           applyProVisuals();
         }, 3000);
       });
@@ -2440,6 +2446,7 @@
     if (proSuccessClose) {
       proSuccessClose.addEventListener('click', function () {
         if (proModalBody) proModalBody.style.display = '';
+        if (proModalPanel) proModalPanel.style.minHeight = '';
         closeProModal();
       });
     }
@@ -2447,6 +2454,8 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && proModal && !proModal.classList.contains('hidden')) closeProModal();
     });
+
+    document.addEventListener('pro-downgraded', applyProVisuals);
 
     applyProVisuals();
   })();
@@ -2893,6 +2902,11 @@
             </div>
           </div>
         </section>
+        <section id="ps-subscription-section" class="ps-section hidden">
+          <h3 class="ps-section-title">Subscription</h3>
+          <p class="ps-subscription-status">You're on <strong>PRO</strong> 👑</p>
+          <button type="button" id="ps-downgrade-btn" class="ps-btn ps-btn-secondary">Downgrade to Free</button>
+        </section>
       </div>
       <div class="ps-modal-footer">
         <button type="button" class="ps-btn ps-btn-secondary" id="ps-settings-cancel">Cancel</button>
@@ -2950,6 +2964,7 @@
     .ps-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .ps-updating { font-size: 0.75rem; color: #58a6ff; margin-left: 6px; }
     .ps-updating.hidden { display: none; }
+    .ps-subscription-status { margin: 0 0 12px 0; font-size: 0.9rem; color: #e6edf3; }
   </style>
   <script>
   (function() {
@@ -3084,6 +3099,9 @@
       if (e.key === 'Escape' && cityDropdown && !cityDropdown.classList.contains('hidden')) hideCityDropdown();
     });
 
+    var subscriptionSection = document.getElementById('ps-subscription-section');
+    var downgradeBtn = document.getElementById('ps-downgrade-btn');
+
     function openModal() {
       if (!modal) return;
       var nameEl = document.getElementById('display-username');
@@ -3096,6 +3114,9 @@
       document.querySelectorAll('.ps-avatar-option').forEach(function(el) {
         el.classList.toggle('selected', el.getAttribute('data-avatar') === savedAvatar);
       });
+      if (subscriptionSection) {
+        subscriptionSection.classList.toggle('hidden', localStorage.getItem('userPlan') !== 'PRO');
+      }
       modal.classList.add('active');
       modal.setAttribute('aria-hidden', 'false');
     }
@@ -3115,6 +3136,16 @@
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
     if (backdrop) backdrop.addEventListener('click', closeModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    if (downgradeBtn) {
+      downgradeBtn.addEventListener('click', function() {
+        if (!confirm('Downgrade to the free plan? You will keep your credits but lose PRO benefits (e.g. lower fees).')) return;
+        localStorage.setItem('userPlan', 'Free');
+        document.dispatchEvent(new CustomEvent('pro-downgraded'));
+        if (subscriptionSection) subscriptionSection.classList.add('hidden');
+        closeModal();
+      });
+    }
 
     if (currencyToggle) currencyToggle.addEventListener('click', function() {
       var next = currencyToggle.getAttribute('aria-checked') === 'true' ? 'false' : 'true';
