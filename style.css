@@ -1045,3 +1045,54 @@ table tbody tr:hover {
     opacity: 0;
   }
 }
+
+/* ========== Mobile / Phone responsive ========== */
+@media (max-width: 767px) {
+  /* Sidebar: full-screen overlay when open (above ticker), slides in from left */
+  #sidebar {
+    top: 0;
+    height: 100vh;
+    max-height: 100dvh;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    z-index: 110;
+  }
+  #sidebar-backdrop {
+    top: 0;
+    height: 100vh;
+    max-height: 100dvh;
+    z-index: 105;
+  }
+  /* Touch-friendly tap targets */
+  button:not(.min-h-\[44px\]):not(.min-h-\[48px\]) {
+    min-height: 44px;
+  }
+  .nav-link {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  /* Modals: full width with safe padding */
+  [id$="-modal"] > div > div.max-w-3xl,
+  [id$="-modal"] > div > div.max-w-2xl,
+  [id$="-modal"] > div > div.max-w-lg,
+  [id$="-modal"] > div > div.max-w-md,
+  [id$="-modal"] > div > div.max-w-5xl {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Safe area for notched phones */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+  }
+}

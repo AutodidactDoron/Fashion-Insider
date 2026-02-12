@@ -97,11 +97,14 @@
     </div>
   </div>
 
+  <!-- Mobile sidebar backdrop (tap to close) -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-[25] hidden backdrop-blur-sm md:!hidden" aria-hidden="true"></div>
   <!-- =============================================================================
        FIXED LAYOUT: SIDEBAR (LEFT)
-       Always visible. Contains user profile and optional nav.
+       On mobile: drawer overlay (hidden by default, open via hamburger).
+       On md+: always visible.
        ============================================================================= -->
-  <aside id="sidebar" class="fixed left-0 top-10 bottom-0 w-56 bg-[#0a0a0c] border-r border-white/5 flex flex-col z-30">
+  <aside id="sidebar" class="fixed left-0 top-10 bottom-0 w-56 bg-[#0a0a0c] border-r border-white/5 flex flex-col z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-out">
     <div class="p-5">
       <span class="text-lg font-bold"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
     </div>
@@ -142,11 +145,14 @@
        FIXED LAYOUT: TOP HEADER
        Always visible. Contains logo, main nav, and "Buy Credits" (TOP UP) button.
        ============================================================================= -->
-  <header class="fixed top-10 left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-6 z-20">
-    <div class="flex items-center gap-8">
-      <span class="font-bold text-lg"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
-      <!-- Main nav: these links control which SECTION is visible (see JavaScript) -->
-      <nav class="flex items-center gap-6 text-sm">
+  <header class="fixed top-10 left-0 md:left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-3 sm:px-6 z-20 transition-[left] duration-300">
+    <div class="flex items-center gap-3 sm:gap-8 min-w-0">
+      <button type="button" id="sidebar-toggle" class="md:hidden flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors" aria-label="Open menu">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <span class="font-bold text-base sm:text-lg truncate"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
+      <!-- Main nav: hidden on mobile (use sidebar); visible from md up -->
+      <nav class="hidden md:flex items-center gap-4 lg:gap-6 text-sm">
         <button type="button" data-section="dashboard-section" class="header-nav text-fi-accent border-b-2 border-fi-accent pb-0.5" data-tooltip="View dashboard and marketplace">Dashboard</button>
         <button type="button" data-section="community-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Browse posts and trading discussions">Community</button>
         <button type="button" data-section="price-list-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="See all items with price ranges and trends">Price List</button>
@@ -154,10 +160,10 @@
         <button type="button" data-section="messages-section" class="header-nav text-gray-400 hover:text-white" data-tooltip="Open channels and direct messages">Messages</button>
       </nav>
     </div>
-    <div class="flex items-center gap-3">
-      <button type="button" id="btn-upgrade-pro-header" class="btn-upgrade-pro px-4 py-2 rounded-lg font-semibold text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits">UPGRADE TO PRO 👑</button>
-      <button type="button" id="btn-start-trade" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Open trade screen to offer items or credits">Start Trade</button>
-      <button type="button" id="btn-get-verified" class="px-4 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors" data-tooltip="Verify your ID to get verified badge">Get Verified</button>
+    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      <button type="button" id="btn-upgrade-pro-header" class="btn-upgrade-pro hidden sm:inline-flex px-3 py-2 rounded-lg font-semibold text-xs text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-[length:200%_100%] animate-pro-shine hover:opacity-95 transition-opacity" data-tooltip="Unlock PRO benefits">UPGRADE TO PRO 👑</button>
+      <button type="button" id="btn-start-trade" class="hidden sm:inline-flex px-3 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors min-h-[44px] items-center" data-tooltip="Open trade screen to offer items or credits">Start Trade</button>
+      <button type="button" id="btn-get-verified" class="hidden md:inline-flex px-3 py-2 rounded-lg bg-fi-accent text-black font-semibold text-sm hover:bg-fi-accent-hover transition-colors min-h-[44px] items-center" data-tooltip="Verify your ID to get verified badge">Get Verified</button>
       <div class="flex items-center gap-2">
         <span id="pro-crown-header" class="pro-crown hidden text-lg" title="PRO Member" aria-hidden="true">👑</span>
         <span id="verified-checkmark-header" class="verified-badge hidden" title="Verified" aria-label="Verified"><svg class="verified-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
@@ -165,11 +171,11 @@
         <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
         </div>
       </div>
-      <!-- BUY CREDITS / TOP UP: This button opens the Credits Shop modal (id="credits-modal") -->
-      <div class="flex items-center gap-2 ml-2 pl-2 border-l border-white/10">
-        <div class="text-xs text-gray-400">BALANCE</div>
-        <span id="display-currency">$</span><span id="header-balance" class="text-white font-semibold">5,450 CR</span>
-        <button type="button" id="btn-top-up" class="px-4 py-2 rounded-lg bg-fi-success text-white text-sm font-bold hover:bg-fi-success-hover transition-colors" data-tooltip="Buy credits to use for trades">TOP UP</button>
+      <!-- BUY CREDITS / TOP UP -->
+      <div class="flex items-center gap-1.5 sm:gap-2 ml-1 sm:ml-2 pl-2 border-l border-white/10">
+        <div class="text-xs text-gray-400 hidden xs:block">BALANCE</div>
+        <span id="display-currency" class="hidden sm:inline">$</span><span id="header-balance" class="text-white font-semibold text-sm sm:text-base whitespace-nowrap">5,450 CR</span>
+        <button type="button" id="btn-top-up" class="px-3 py-2 rounded-lg bg-fi-success text-white text-xs sm:text-sm font-bold hover:bg-fi-success-hover transition-colors min-h-[44px] flex items-center" data-tooltip="Buy credits to use for trades">TOP UP</button>
       </div>
     </div>
   </header>
@@ -178,8 +184,8 @@
        MAIN CONTENT AREA
        Only one section is visible at a time. Default: dashboard-section.
        ============================================================================= -->
-  <main class="pt-24 pl-56 min-h-screen">
-    <div class="p-6">
+  <main class="pt-24 pl-0 md:pl-56 min-h-screen transition-[padding] duration-300">
+    <div class="p-4 sm:p-6">
 
       <!-- **********************************************************************
            SECTION: DASHBOARD (id="dashboard-section")
@@ -188,7 +194,7 @@
            ********************************************************************** -->
       <section id="dashboard-section" class="space-y-6">
         <!-- Stats row -->
-        <div class="grid grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <div class="bg-card rounded-xl p-5 border border-white/5">
             <div class="text-xs text-gray-400 uppercase tracking-wider">Active Listings</div>
             <div class="text-2xl font-bold text-white mt-1">248</div>
@@ -215,7 +221,7 @@
           <div class="bg-card rounded-xl border border-white/10 p-5">
             <h3 class="text-lg font-bold text-white mb-1">Active Trade Status</h3>
             <p id="active-trade-product-name" class="text-gray-400 text-sm mb-4"></p>
-            <div class="trade-stepper flex items-center justify-between max-w-2xl mx-auto">
+            <div class="trade-stepper flex flex-wrap items-center justify-between gap-4 max-w-2xl mx-auto">
               <div class="trade-step flex flex-col items-center" data-step="1">
                 <div class="trade-step-circle flex items-center justify-center">
                   <svg class="trade-step-icon w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
@@ -265,7 +271,7 @@
         <div id="dashboard-marketplace-panel" class="dashboard-panel">
           <h2 class="text-2xl font-bold text-white">Premium Marketplace</h2>
           <p class="text-gray-400 text-sm mt-1">Verified sellers • Secure transactions • Safe meetups</p>
-          <div id="sneaker-grid" class="grid grid-cols-4 gap-4 mt-6"></div>
+          <div id="sneaker-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6"></div>
         </div>
         <div id="dashboard-closet-panel" class="dashboard-panel hidden">
           <div class="flex items-center justify-between flex-wrap gap-3">
@@ -278,7 +284,7 @@
               <span>Sell item</span>
             </button>
           </div>
-          <div id="my-closet-grid" class="grid grid-cols-4 gap-4 mt-6"></div>
+          <div id="my-closet-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6"></div>
           <div id="my-closet-empty" class="hidden text-center py-12 text-gray-500">
             <p class="text-lg font-medium">No items yet</p>
             <p class="text-sm mt-1">Tap the <span class="inline-flex w-8 h-8 rounded-full bg-fi-accent text-black items-center justify-center text-lg">+</span> button to sell an item.</p>
@@ -326,8 +332,8 @@
            Trending Posts sidebar.
            ********************************************************************** -->
       <section id="community-section" class="hidden">
-        <div class="flex gap-6">
-          <div class="flex-1 space-y-4">
+        <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
+          <div class="flex-1 space-y-4 min-w-0">
             <div class="bg-card rounded-xl p-4 border border-white/5 flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-fi-accent flex items-center justify-center text-white font-bold text-sm">YO</div>
               <input type="text" placeholder="What are you looking for?" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-fi-accent" />
@@ -398,7 +404,7 @@
               </div>
             </div>
           </div>
-          <div class="w-72 shrink-0 space-y-4">
+          <div class="w-full lg:w-72 shrink-0 space-y-4">
             <div class="bg-card rounded-xl p-4 border border-white/5">
               <h3 class="font-bold text-white mb-3">Active Conversations</h3>
               <div class="space-y-2">
@@ -736,9 +742,9 @@
            Left: Channels (TEXT + VOICE). Center: # general chat. Right: Online users.
            ********************************************************************** -->
       <section id="messages-section" class="hidden">
-        <div class="flex h-[calc(100vh-8rem)] rounded-xl overflow-hidden border border-white/5">
+        <div class="flex flex-col md:flex-row h-[calc(100vh-8rem)] min-h-[400px] rounded-xl overflow-hidden border border-white/5">
           <!-- Left: Channels -->
-          <div class="w-60 bg-card border-r border-white/5 flex flex-col">
+          <div class="w-full md:w-60 flex-shrink-0 bg-card border-r border-white/5 flex flex-col max-h-[200px] md:max-h-none overflow-y-auto">
             <div class="p-4 border-b border-white/5">
               <span class="font-bold"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
             </div>
@@ -830,7 +836,7 @@
             </div>
           </div>
           <!-- Right: Online users -->
-          <div class="w-56 bg-card border-l border-white/5 flex flex-col">
+          <div class="w-full md:w-56 flex-shrink-0 bg-card border-l border-white/5 flex flex-col max-h-[180px] md:max-h-none overflow-y-auto">
             <div class="p-3 border-b border-white/5 flex items-center gap-2">
               <span class="text-gray-400 text-sm">Online — 47</span>
             </div>
@@ -1271,7 +1277,7 @@
   <!-- =============================================================================
        SELL ITEM FAB + MODAL (Marketplace – upload your own items)
        ============================================================================= -->
-  <button type="button" id="sell-item-fab" class="fixed bottom-24 right-24 w-14 h-14 rounded-full bg-fi-accent text-black flex items-center justify-center text-2xl font-light shadow-lg hover:bg-fi-accent-hover transition-colors z-40" aria-label="Sell an item" data-tooltip="Sell an item">+</button>
+  <button type="button" id="sell-item-fab" class="fixed bottom-20 right-4 sm:right-6 md:right-24 md:bottom-24 w-14 h-14 rounded-full bg-fi-accent text-black flex items-center justify-center text-2xl font-light shadow-lg hover:bg-fi-accent-hover transition-colors z-40 min-h-[48px] min-w-[48px]" aria-label="Sell an item" data-tooltip="Sell an item">+</button>
 
   <div id="sell-item-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
     <div class="absolute inset-0 bg-black/70" id="sell-item-backdrop"></div>
@@ -1553,6 +1559,7 @@
     var tip = document.getElementById('global-tooltip');
     if (!tip) return;
     var showBelowThreshold = 140;
+    var canHover = window.matchMedia('(hover: hover)').matches;
     function showTooltip(ev, text) {
       if (!text) return;
       tip.textContent = text;
@@ -1584,6 +1591,9 @@
     function bindTooltip(el) {
       if (el.hasAttribute('data-tooltip-bound')) return;
       el.setAttribute('data-tooltip-bound', '1');
+      if (!canHover) {
+        return;
+      }
       el.addEventListener('mouseenter', function (e) {
         var text = el.getAttribute('data-tooltip');
         if (text) showTooltip(e, text);
@@ -1674,10 +1684,34 @@
 
       // -------------------------------------------------------------------------
       // Wire sidebar nav: same behavior as header (for learning – both control sections)
+      // On mobile, closing the sidebar after navigation so the drawer doesn't stay open.
       // -------------------------------------------------------------------------
+      var sidebarEl = document.getElementById('sidebar');
+      var sidebarBackdrop = document.getElementById('sidebar-backdrop');
+      var sidebarToggleBtn = document.getElementById('sidebar-toggle');
+
+      function openSidebarMobile() {
+        if (sidebarEl) sidebarEl.classList.remove('-translate-x-full');
+        if (sidebarBackdrop) { sidebarBackdrop.classList.remove('hidden'); sidebarBackdrop.setAttribute('aria-hidden', 'false'); }
+        document.body.style.overflow = 'hidden';
+      }
+      function closeSidebarMobile() {
+        if (sidebarEl) sidebarEl.classList.add('-translate-x-full');
+        if (sidebarBackdrop) { sidebarBackdrop.classList.add('hidden'); sidebarBackdrop.setAttribute('aria-hidden', 'true'); }
+        document.body.style.overflow = '';
+      }
+
+      if (sidebarToggleBtn) {
+        sidebarToggleBtn.addEventListener('click', function () { openSidebarMobile(); });
+      }
+      if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', function () { closeSidebarMobile(); });
+      }
+
       document.querySelectorAll('.nav-link').forEach(function (btn) {
         btn.addEventListener('click', function () {
           showSection(btn.getAttribute('data-section'));
+          closeSidebarMobile();
         });
       });
 
@@ -2356,8 +2390,14 @@
       if (crownHeader) crownHeader.classList.toggle('hidden', !pro);
       if (displayAvatar) displayAvatar.classList.toggle('pro', pro);
       if (headerProfileIcon) headerProfileIcon.classList.toggle('pro', pro);
-      if (btnUpgradeHeader) btnUpgradeHeader.classList.toggle('hidden', pro);
-      if (btnUpgradeSidebar) btnUpgradeSidebar.classList.toggle('hidden', pro);
+      if (btnUpgradeHeader) {
+        btnUpgradeHeader.classList.toggle('hidden', pro);
+        btnUpgradeHeader.style.display = pro ? 'none' : '';
+      }
+      if (btnUpgradeSidebar) {
+        btnUpgradeSidebar.classList.toggle('hidden', pro);
+        btnUpgradeSidebar.style.display = pro ? 'none' : '';
+      }
     }
 
     function openProModal() {
