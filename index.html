@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fashion Insider – Trading Platform</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Tailwind CSS via CDN for utility-first styling -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +21,7 @@
             'fi-success': '#2ea043',
             'fi-success-hover': '#238636',
             'fi-muted': '#8b949e',
+            'logo-blue': '#2563eb',
           }
         }
       }
@@ -101,7 +103,7 @@
        ============================================================================= -->
   <aside id="sidebar" class="fixed left-0 top-10 bottom-0 w-56 bg-[#0a0a0c] border-r border-white/5 flex flex-col z-30">
     <div class="p-5">
-      <span class="text-lg font-bold text-white">Fashion Insider</span>
+      <span class="text-lg font-bold"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
     </div>
     <!-- User profile block (click to open profile & settings) -->
     <div class="px-4 py-6 border-t border-white/5 cursor-pointer hover:bg-white/5 transition-colors rounded-lg mx-2" id="user-profile-btn" role="button" tabindex="0" data-tooltip="Open profile and settings">
@@ -142,7 +144,7 @@
        ============================================================================= -->
   <header class="fixed top-10 left-56 right-0 h-14 bg-[#0a0a0c] border-b border-white/5 flex items-center justify-between px-6 z-20">
     <div class="flex items-center gap-8">
-      <span class="text-white font-bold text-lg">Fashion Insider</span>
+      <span class="font-bold text-lg"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
       <!-- Main nav: these links control which SECTION is visible (see JavaScript) -->
       <nav class="flex items-center gap-6 text-sm">
         <button type="button" data-section="dashboard-section" class="header-nav text-fi-accent border-b-2 border-fi-accent pb-0.5" data-tooltip="View dashboard and marketplace">Dashboard</button>
@@ -738,7 +740,7 @@
           <!-- Left: Channels -->
           <div class="w-60 bg-card border-r border-white/5 flex flex-col">
             <div class="p-4 border-b border-white/5">
-              <span class="font-bold text-white">Fashion Insider</span>
+              <span class="font-bold"><span class="text-white">Fashion</span> <span class="text-logo-blue">Insider</span></span>
             </div>
             <div class="flex border-b border-white/5 text-sm">
               <button type="button" class="flex-1 py-2.5 bg-white/10 text-white font-medium">Channels</button>
