@@ -22,11 +22,27 @@
   if (typeof window.currentCurrency === 'undefined') window.currentCurrency = localStorage.getItem('ps-currency') || 'USD';
   if (typeof window.usdToIlsRate === 'undefined') window.usdToIlsRate = parseFloat(localStorage.getItem('ps-usd-to-ils-rate'), 10) || 1;
 
+  var USD_TO_CR = 100;
+
   function formatPriceRange(low, high) {
     var cur = window.currentCurrency || 'USD';
     var rate = cur === 'ILS' ? (window.usdToIlsRate || 1) : 1;
     var sym = cur === 'ILS' ? '₪' : '$';
     return sym + Math.round(low * rate) + ' – ' + sym + Math.round(high * rate);
+  }
+
+  function formatPriceRangeCR(low, high) {
+    var lowCR = Math.round(low * USD_TO_CR);
+    var highCR = Math.round(high * USD_TO_CR);
+    return lowCR.toLocaleString() + ' – ' + highCR.toLocaleString() + ' CR';
+  }
+
+  function formatPriceEquiv(priceUsd) {
+    var cur = window.currentCurrency || 'USD';
+    var rate = cur === 'ILS' ? (window.usdToIlsRate || 1) : 1;
+    var sym = cur === 'ILS' ? '₪' : '$';
+    var val = priceUsd * rate;
+    return cur === 'ILS' ? sym + Math.round(val).toLocaleString() : sym + val.toFixed(2);
   }
 
   function formatPriceChange(delta) {
@@ -57,6 +73,9 @@
   // ---------------------------------------------------------------------------
   function buildProductCard(p) {
     var priceRange = formatPriceRange(p.priceLow, p.priceHigh);
+    var priceRangeCR = formatPriceRangeCR(p.priceLow, p.priceHigh);
+    var midUsd = (p.priceLow + p.priceHigh) / 2;
+    var equivStr = formatPriceEquiv(midUsd);
     var graphHtml = renderMiniGraph(p.priceHistory);
     var heartClass = likedIds[p.id] ? 'text-red-500' : 'text-gray-400';
     return (
@@ -76,9 +95,10 @@
           '<p class="text-gray-400 text-sm">' + p.brand + '</p>' +
           '<div class="mt-2 text-xs text-gray-500">Price range</div>' +
           '<div class="text-white font-mono font-semibold text-sm">' + priceRange + '</div>' +
+          '<div class="text-gray-400 text-xs">' + priceRangeCR + '</div>' +
           '<div class="mt-2">' + graphHtml + '</div>' +
           '<div class="mt-3 flex items-end justify-between gap-2">' +
-            '<div><div class="text-xs text-gray-400">PRICE</div><div class="text-white font-bold">' + Number(p.price).toLocaleString() + ' CR</div></div>' +
+            '<div><div class="text-xs text-gray-400">PRICE</div><div class="text-white font-bold">' + Number(p.price).toLocaleString() + ' CR <span class="text-gray-400 font-normal text-xs">(' + equivStr + ')</span></div></div>' +
             '<div class="flex gap-2">' +
               '<button type="button" class="btn-trade px-3 py-2 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:opacity-90 transition-opacity" data-product-id="' + p.id + '" data-tooltip="Open trade screen for this item">Trade</button>' +
               '<button type="button" class="btn-buy px-3 py-2 rounded-lg bg-fi-success text-white text-xs font-bold hover:opacity-90 transition-opacity" data-product-id="' + p.id + '" data-tooltip="Buy now with your credits">BUY</button>' +
@@ -98,12 +118,13 @@
     if (!grid || !list || !list.length) return;
     grid.innerHTML = list.map(buildProductCard).join('');
 
-    // Stats row: update from products
+    // Stats row: update from products (avg in CR + currency equivalent)
     var avgPrice = Math.round(list.reduce(function (sum, p) { return sum + p.price; }, 0) / list.length);
+    var avgPriceUsd = avgPrice / USD_TO_CR;
     var avgEl = document.querySelector('#dashboard-section .grid.grid-cols-4 .text-2xl.font-bold');
     if (avgEl && avgEl.closest('.bg-card')) {
       var cards = document.querySelectorAll('#dashboard-section .grid.grid-cols-4 .bg-card');
-      if (cards[1]) cards[1].querySelector('.text-2xl').textContent = avgPrice.toLocaleString() + ' CR';
+      if (cards[1]) cards[1].querySelector('.text-2xl').innerHTML = avgPrice.toLocaleString() + ' CR <span class="text-gray-400 font-normal text-sm">(' + formatPriceEquiv(avgPriceUsd) + ')</span>';
     }
     var listingEl = document.querySelector('#dashboard-section .grid.grid-cols-4 .bg-card .text-2xl');
     if (listingEl) listingEl.textContent = list.length;
@@ -400,8 +421,11 @@
     document.getElementById('product-detail-thumb').alt = p.name;
     document.getElementById('product-detail-name').textContent = p.name;
     document.getElementById('product-detail-brand').textContent = p.brand;
-    document.getElementById('product-detail-range').textContent = formatPriceRange(p.priceLow, p.priceHigh);
-    document.getElementById('product-detail-cr').textContent = p.price.toLocaleString() + ' CR';
+    var rangeCurrency = formatPriceRange(p.priceLow, p.priceHigh);
+    var rangeCR = formatPriceRangeCR(p.priceLow, p.priceHigh);
+    var midUsd = (p.priceLow + p.priceHigh) / 2;
+    document.getElementById('product-detail-range').textContent = rangeCurrency + ' · ' + rangeCR;
+    document.getElementById('product-detail-cr').textContent = p.price.toLocaleString() + ' CR (' + formatPriceEquiv(midUsd) + ')';
 
     var chartEl = document.getElementById('product-detail-chart');
     var yAxisEl = document.getElementById('product-detail-yaxis');
@@ -487,7 +511,7 @@
         var toILS = window.marketService.priceToILS;
         rangeEl.textContent = '₪' + toILS(item.retailPrice, false) + ' – ₪' + toILS(item.resellPrice, false) + ' (מחיר שוק, כולל מע"מ)';
       } else {
-        rangeEl.textContent = formatPriceRange(item.priceLow, item.priceHigh);
+        rangeEl.innerHTML = formatPriceRange(item.priceLow, item.priceHigh) + '<br><span class="text-gray-400 text-xs">' + formatPriceRangeCR(item.priceLow, item.priceHigh) + '</span>';
       }
     }
     var conditionWrap = document.getElementById('price-list-detail-condition-wrap');
@@ -507,7 +531,8 @@
       }
     } else {
       if (conditionWrap) conditionWrap.classList.add('hidden');
-      if (crEl) crEl.textContent = (item.price != null ? Number(item.price).toLocaleString() : '') + ' CR';
+      var midUsd = (item.priceLow + item.priceHigh) / 2;
+      if (crEl) crEl.textContent = (item.price != null ? Number(item.price).toLocaleString() : '') + ' CR (' + formatPriceEquiv(midUsd) + ')';
     }
     var hist = item.priceHistory || [];
     if (chartEl && hist.length) {
@@ -1148,6 +1173,7 @@
       var changeClass = change >= 0 ? 'text-fi-success' : 'text-red-400';
       var changeStr = formatPriceChange(change);
       var priceRangeStr = formatPriceRange(p.priceLow, p.priceHigh);
+      var priceRangeCRStr = formatPriceRangeCR(p.priceLow, p.priceHigh);
       var vals = hist.slice(-4).map(function (h) { return h.value; });
       var min = Math.min.apply(null, vals.length ? vals : [0]);
       var max = Math.max.apply(null, vals.length ? vals : [1]);
@@ -1156,7 +1182,7 @@
       var barColor = change >= 0 ? 'bg-fi-success' : 'bg-red-500';
       var bars = barHeights.map(function (h) { return '<span class="w-1 ' + barColor + ' rounded-sm" style="height:' + h + '%"></span>'; }).join('');
       var safeName = p.name.replace(/"/g, '&quot;');
-      return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + p.imageURL + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + p.name + '</div><div class="text-gray-500 text-xs">' + p.brand + '</div></div></div></td><td class="py-3 px-4"><div class="text-white">' + priceRangeStr + '</div><div class="text-gray-500 text-xs">Market Range</div></td><td class="py-3 px-4"><span class="' + changeClass + ' flex items-center gap-1">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-product-name="' + safeName + '" data-tooltip="Open full details and price chart for this item">View Details</button></td></tr>';
+      return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + p.imageURL + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + p.name + '</div><div class="text-gray-500 text-xs">' + p.brand + '</div></div></div></td><td class="py-3 px-4"><div class="text-white">' + priceRangeStr + '</div><div class="text-gray-400 text-xs">' + priceRangeCRStr + '</div><div class="text-gray-500 text-xs">Market Range</div></td><td class="py-3 px-4"><span class="' + changeClass + ' flex items-center gap-1">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-product-name="' + safeName + '" data-tooltip="Open full details and price chart for this item">View Details</button></td></tr>';
     }).join('');
     tbody.innerHTML = rows;
 

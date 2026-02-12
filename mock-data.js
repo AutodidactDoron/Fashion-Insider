@@ -35,13 +35,15 @@ function generatePriceHistoryFromRange(days, priceLow, priceHigh) {
 
 // Base path for uploaded images (place in assets/ folder; fallback to placeholder if missing)
 var ASSETS = 'assets/';
+// 1 USD = 100 CR so price (CR) = mid(priceLow, priceHigh) * 100
+function priceCRFromRange(low, high) { return Math.round((low + high) / 2 * 100); }
 
 window.products = [
   {
     id: 'p1',
     name: 'Nike Air Force 1 White',
     brand: 'Nike',
-    price: 950,
+    price: priceCRFromRange(85, 120),
     priceLow: 85,
     priceHigh: 120,
     imageURL: ASSETS + 'nike-air-force-1.png',
@@ -51,7 +53,7 @@ window.products = [
     id: 'p2',
     name: 'Nike Vomero 5 Silver Grey',
     brand: 'Nike',
-    price: 2200,
+    price: priceCRFromRange(180, 240),
     priceLow: 180,
     priceHigh: 240,
     imageURL: ASSETS + 'nike-vomero-5.png',
@@ -61,7 +63,7 @@ window.products = [
     id: 'p3',
     name: 'New Balance 9060 Phantom',
     brand: 'New Balance',
-    price: 1850,
+    price: priceCRFromRange(150, 220),
     priceLow: 150,
     priceHigh: 220,
     imageURL: ASSETS + 'new-balance-9060.png',
@@ -71,35 +73,35 @@ window.products = [
     id: 'p4',
     name: 'Air Jordan 1 Retro High Chicago',
     brand: 'Nike',
-    price: 2850,
+    price: priceCRFromRange(280, 450),
     priceLow: 280,
     priceHigh: 450,
     imageURL: 'https://placehold.co/400x300/8b0000/ffffff?text=AJ1+Chicago',
     priceHistory: generatePriceHistoryFromRange(14, 280, 450),
     variations: [
-      { id: 'p4-v1', name: 'Chicago (2023)', brand: 'Nike', imageURL: 'https://placehold.co/400x300/8b0000/ffffff?text=Chicago+23', price: 2900, priceLow: 285, priceHigh: 460, priceHistory: generatePriceHistoryFromRange(14, 285, 460) },
-      { id: 'p4-v2', name: 'Lost & Found', brand: 'Nike', imageURL: 'https://placehold.co/400x300/5c4033/ffffff?text=Lost+Found', price: 3100, priceLow: 300, priceHigh: 480, priceHistory: generatePriceHistoryFromRange(14, 300, 480) }
+      { id: 'p4-v1', name: 'Chicago (2023)', brand: 'Nike', imageURL: 'https://placehold.co/400x300/8b0000/ffffff?text=Chicago+23', price: priceCRFromRange(285, 460), priceLow: 285, priceHigh: 460, priceHistory: generatePriceHistoryFromRange(14, 285, 460) },
+      { id: 'p4-v2', name: 'Lost & Found', brand: 'Nike', imageURL: 'https://placehold.co/400x300/5c4033/ffffff?text=Lost+Found', price: priceCRFromRange(300, 480), priceLow: 300, priceHigh: 480, priceHistory: generatePriceHistoryFromRange(14, 300, 480) }
     ]
   },
   {
     id: 'p5',
     name: 'Nike Dunk Low Panda',
     brand: 'Nike',
-    price: 1200,
+    price: priceCRFromRange(100, 160),
     priceLow: 100,
     priceHigh: 160,
     imageURL: 'https://placehold.co/400x300/333333/ffffff?text=Dunk+Panda',
     priceHistory: generatePriceHistoryFromRange(14, 100, 160),
     variations: [
-      { id: 'p5-v1', name: 'Black & White', brand: 'Nike', imageURL: 'https://placehold.co/400x300/333333/ffffff?text=Dunk+B%26W', price: 1150, priceLow: 95, priceHigh: 155, priceHistory: generatePriceHistoryFromRange(14, 95, 155) },
-      { id: 'p5-v2', name: 'University Blue', brand: 'Nike', imageURL: 'https://placehold.co/400x300/1e3a5f/ffffff?text=Dunk+Blue', price: 1280, priceLow: 105, priceHigh: 165, priceHistory: generatePriceHistoryFromRange(14, 105, 165) }
+      { id: 'p5-v1', name: 'Black & White', brand: 'Nike', imageURL: 'https://placehold.co/400x300/333333/ffffff?text=Dunk+B%26W', price: priceCRFromRange(95, 155), priceLow: 95, priceHigh: 155, priceHistory: generatePriceHistoryFromRange(14, 95, 155) },
+      { id: 'p5-v2', name: 'University Blue', brand: 'Nike', imageURL: 'https://placehold.co/400x300/1e3a5f/ffffff?text=Dunk+Blue', price: priceCRFromRange(105, 165), priceLow: 105, priceHigh: 165, priceHistory: generatePriceHistoryFromRange(14, 105, 165) }
     ]
   },
   {
     id: 'p6',
     name: 'Yeezy Boost 350 V2 Zebra',
     brand: 'Adidas',
-    price: 3200,
+    price: priceCRFromRange(280, 380),
     priceLow: 280,
     priceHigh: 380,
     imageURL: 'https://placehold.co/400x300/1a1a1a/ffffff?text=350+Zebra',
@@ -109,7 +111,7 @@ window.products = [
     id: 'p7',
     name: 'Travis Scott x Air Jordan 1 Low',
     brand: 'Nike',
-    price: 14500,
+    price: priceCRFromRange(1200, 1600),
     priceLow: 1200,
     priceHigh: 1600,
     imageURL: 'https://placehold.co/400x300/4a3728/ffffff?text=TS+AJ1',
@@ -119,7 +121,7 @@ window.products = [
     id: 'p8',
     name: 'New Balance 550 White Green',
     brand: 'New Balance',
-    price: 1850,
+    price: priceCRFromRange(140, 200),
     priceLow: 140,
     priceHigh: 200,
     imageURL: 'https://placehold.co/400x300/1a3d1a/ffffff?text=550',
@@ -129,7 +131,7 @@ window.products = [
     id: 'p9',
     name: 'Adidas Samba White',
     brand: 'Adidas',
-    price: 780,
+    price: priceCRFromRange(65, 95),
     priceLow: 65,
     priceHigh: 95,
     imageURL: 'https://placehold.co/400x300/ffffff/1a1a1a?text=Samba',
@@ -139,7 +141,7 @@ window.products = [
     id: 'p10',
     name: 'Salomon XT-6 Black',
     brand: 'Salomon',
-    price: 1950,
+    price: priceCRFromRange(160, 220),
     priceLow: 160,
     priceHigh: 220,
     imageURL: 'https://placehold.co/400x300/1a1a1a/ffffff?text=XT-6',
@@ -149,7 +151,7 @@ window.products = [
     id: 'p11',
     name: 'Asics Gel-Lyte III',
     brand: 'Asics',
-    price: 1100,
+    price: priceCRFromRange(90, 140),
     priceLow: 90,
     priceHigh: 140,
     imageURL: 'https://placehold.co/400x300/2d2d2d/ffffff?text=Gel-Lyte',
@@ -159,7 +161,7 @@ window.products = [
     id: 'p12',
     name: 'Converse Chuck 70 High',
     brand: 'Converse',
-    price: 650,
+    price: priceCRFromRange(55, 85),
     priceLow: 55,
     priceHigh: 85,
     imageURL: 'https://placehold.co/400x300/2c2c2c/ffffff?text=Chuck+70',

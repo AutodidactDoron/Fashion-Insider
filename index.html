@@ -174,7 +174,7 @@
       <!-- BUY CREDITS / TOP UP -->
       <div class="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2 pl-2 border-l border-white/10 min-w-0">
         <div class="text-xs text-gray-400 hidden sm:block">BALANCE</div>
-        <span id="display-currency" class="hidden sm:inline">$</span><span id="header-balance" class="text-white font-semibold text-xs sm:text-base whitespace-nowrap truncate max-w-[72px] sm:max-w-none">5,450 CR</span>
+        <span id="display-currency" class="hidden sm:inline">$</span><span id="header-balance" class="text-white font-semibold text-xs sm:text-base whitespace-nowrap truncate max-w-[72px] sm:max-w-none">5,450 CR</span><span id="header-balance-equivalent" class="text-gray-400 text-xs sm:text-sm whitespace-nowrap hidden sm:inline" aria-hidden="false"></span>
         <button type="button" id="btn-top-up" class="px-2 sm:px-3 py-2 rounded-lg bg-fi-success text-white text-xs sm:text-sm font-bold hover:bg-fi-success-hover transition-colors min-h-[40px] sm:min-h-[44px] flex items-center shrink-0" data-tooltip="Buy credits to use for trades">TOP UP</button>
       </div>
     </div>
@@ -1760,19 +1760,32 @@
       var creditsModalPay = document.getElementById('credits-modal-pay');
       var creditsModalSuccessDone = document.getElementById('credits-modal-success-done');
       var headerBalanceEl = document.getElementById('header-balance');
+      var headerBalanceEquivalentEl = document.getElementById('header-balance-equivalent');
       var tradeBalanceEl = document.getElementById('trade-your-balance');
       var creditsModalBalanceEl = document.getElementById('credits-modal-balance');
 
       var PAYMENT_DELAY_MS = 2000;
       var userBalance = 5450;
       var pendingPurchaseCredits = 0;
+      var CR_TO_USD = 0.01;
 
       function updateBalanceDisplay() {
         var formatted = userBalance.toLocaleString();
         if (headerBalanceEl) headerBalanceEl.textContent = formatted + ' CR';
         if (tradeBalanceEl) tradeBalanceEl.textContent = formatted;
         if (creditsModalBalanceEl) creditsModalBalanceEl.textContent = formatted + ' CR';
+        if (headerBalanceEquivalentEl) {
+          var currency = localStorage.getItem('ps-currency') || 'USD';
+          var usdToIls = parseFloat(localStorage.getItem('ps-usd-to-ils-rate'), 10) || 3.7;
+          var valueUsd = userBalance * CR_TO_USD;
+          var value = currency === 'ILS' ? valueUsd * usdToIls : valueUsd;
+          var symbol = currency === 'ILS' ? '₪' : '$';
+          var equivFormatted = (currency === 'ILS' ? Math.round(value) : value.toFixed(2)).toLocaleString();
+          headerBalanceEquivalentEl.textContent = ' (≈ ' + symbol + equivFormatted + ')';
+        }
       }
+
+      document.addEventListener('currency-changed', updateBalanceDisplay);
 
       document.querySelectorAll('.credits-package').forEach(function (pkg) {
         pkg.addEventListener('click', function () {
