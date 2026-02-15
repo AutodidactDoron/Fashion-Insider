@@ -832,7 +832,7 @@
 
   var messagesListEl = document.getElementById('messages-list');
   var newMessageToast = document.getElementById('new-message-toast');
-  var currentUserId = localStorage.getItem('supabase_user_id') || 'local-user';
+  var currentUserId = null;
   var currentReceiverId = localStorage.getItem('fashionInsider_receiver_id') || null;
 
   function displayNameForSender(senderId, isOwn) {
@@ -867,18 +867,23 @@
 
   if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
     window.FashionInsiderSupabase.setCurrentReceiverId(currentReceiverId);
-    window.FashionInsiderSupabase.subscribeToMessages(currentUserId, function (msg) {
-      if (!isMessageInCurrentConversation(msg)) return;
-      var isOwn = msg.sender_id === currentUserId;
-      appendMessageToUI(msg, isOwn);
-      if (!isOnMessagesSection()) {
-        if (newMessageToast) {
-          newMessageToast.classList.remove('hidden');
-          newMessageToast.style.display = '';
-          clearTimeout(newMessageToast._tid);
-          newMessageToast._tid = setTimeout(function () { newMessageToast.classList.add('hidden'); }, 5000);
+    window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
+      currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
+      if (!currentUserId) console.warn('[Messages] No auth user; set supabase_user_id in localStorage or sign in.');
+      else console.log('[Messages] Using sender_id:', currentUserId);
+      window.FashionInsiderSupabase.subscribeToMessages(currentUserId, function (msg) {
+        if (!isMessageInCurrentConversation(msg)) return;
+        var isOwn = msg.sender_id === currentUserId;
+        appendMessageToUI(msg, isOwn);
+        if (!isOnMessagesSection()) {
+          if (newMessageToast) {
+            newMessageToast.classList.remove('hidden');
+            newMessageToast.style.display = '';
+            clearTimeout(newMessageToast._tid);
+            newMessageToast._tid = setTimeout(function () { newMessageToast.classList.add('hidden'); }, 5000);
+          }
         }
-      }
+      });
     });
     var supabase = window.FashionInsiderSupabase.getSupabase();
     if (supabase && supabase.from('messages').select && messagesListEl) {
@@ -887,18 +892,27 @@
           messagesListEl.innerHTML = '<p class="text-gray-500 text-sm p-4">Set <code>fashionInsider_receiver_id</code> in localStorage (or select a user) to load messages.</p>';
           return;
         }
-        supabase.from('messages').select('id,created_at,sender_id,receiver_id,content').or('sender_id.eq.' + currentUserId + ',receiver_id.eq.' + currentUserId).order('created_at', { ascending: true }).then(function (r) {
+        if (!currentUserId) {
+          messagesListEl.innerHTML = '<p class="text-gray-500 text-sm p-4">Sign in or set <code>supabase_user_id</code> to load messages.</p>';
+          return;
+        }
+        supabase.from('messages').select('sender_id,receiver_id,content').or('sender_id.eq.' + currentUserId + ',receiver_id.eq.' + currentUserId).then(function (r) {
+          console.log('[Messages] Fetch response:', r.data, 'error:', r.error);
+          if (r.error) console.error('[Messages] Fetch error:', r.error);
           if (r.data && messagesListEl) {
             messagesListEl.innerHTML = '';
             r.data.filter(function (row) {
               return (row.sender_id === currentUserId && row.receiver_id === currentReceiverId) || (row.sender_id === currentReceiverId && row.receiver_id === currentUserId);
             }).forEach(function (row) {
-              appendMessageToUI({ sender_id: row.sender_id, receiver_id: row.receiver_id, content: row.content, created_at: row.created_at }, row.sender_id === currentUserId);
+              appendMessageToUI({ sender_id: row.sender_id, receiver_id: row.receiver_id, content: row.content }, row.sender_id === currentUserId);
             });
           }
         });
       };
-      fetchMessages();
+      window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
+        currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
+        fetchMessages();
+      });
       window.fashionInsiderFetchMessages = fetchMessages;
     }
   }
@@ -929,17 +943,38 @@
         showChatToast('Set receiver: localStorage.setItem("fashionInsider_receiver_id", "<other-user-id>")');
         return;
       }
-      window.FashionInsiderSupabase.insertMessage(currentUserId, currentReceiverId, text).then(function () {
-        msgInput.value = '';
-        msgInput.focus();
-      }).catch(function () {
-        appendMessageToUI({ sender_id: currentUserId, receiver_id: currentReceiverId, content: text, created_at: new Date().toISOString() }, true);
-        msgInput.value = '';
-      });
+      var senderId = currentUserId;
+      if (!senderId) {
+        window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
+          currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
+          senderId = currentUserId;
+          console.log('[Messages] sendMessage — user id (sender_id):', senderId);
+          if (!senderId) {
+            showChatToast('Sign in or set supabase_user_id to send messages.');
+            return;
+          }
+          doInsert(senderId, text);
+        });
+        return;
+      }
+      console.log('[Messages] sendMessage — user id (sender_id):', senderId);
+      doInsert(senderId, text);
     } else {
-      appendMessageToUI({ sender_id: currentUserId, receiver_id: currentReceiverId, content: text, created_at: new Date().toISOString() }, true);
+      appendMessageToUI({ sender_id: currentUserId, receiver_id: currentReceiverId, content: text }, true);
       msgInput.value = '';
     }
+  }
+
+  function doInsert(senderId, text) {
+    window.FashionInsiderSupabase.insertMessage(senderId, currentReceiverId, text).then(function (res) {
+      console.log('[Messages] Insert success, response:', res);
+      msgInput.value = '';
+      msgInput.focus();
+    }).catch(function (err) {
+      console.error('[Messages] Insert error:', err);
+      appendMessageToUI({ sender_id: senderId, receiver_id: currentReceiverId, content: text }, true);
+      msgInput.value = '';
+    });
   }
 
   if (msgInput && msgSend) {
