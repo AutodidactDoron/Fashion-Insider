@@ -835,40 +835,27 @@
               </div>
             </div>
           </div>
-          <!-- Right: Online users -->
-          <div class="w-full md:w-56 flex-shrink-0 bg-card border-l border-white/5 flex flex-col max-h-[180px] md:max-h-none overflow-y-auto">
-            <div class="p-3 border-b border-white/5 flex items-center gap-2">
-              <span class="text-gray-400 text-sm">Online — 47</span>
+          <!-- Right: PARTY (Xbox-style) -->
+          <div id="party-sidebar" class="w-full md:w-56 flex-shrink-0 bg-card border-l border-white/5 flex flex-col overflow-y-auto party-sidebar">
+            <div class="p-3 border-b border-white/10">
+              <h3 class="text-white font-bold text-sm uppercase tracking-wider">Party</h3>
             </div>
-            <div class="p-2 space-y-1 overflow-y-auto">
-              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
-                <div class="relative">
-                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">SK</div>
-                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-white text-sm">SneakerKing</div>
-                  <div class="text-gray-500 text-xs">Trading</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
-                <div class="relative">
-                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">FP</div>
-                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-white text-sm">FashionPro</div>
-                  <div class="text-gray-500 text-xs">Looking for deals</div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5">
-                <div class="relative">
-                  <div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold">HT</div>
-                  <span class="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-fi-success border-2 border-card"></span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-white text-sm">HypeTrader</div>
-                  <div class="text-gray-500 text-xs">Online</div>
+            <div class="p-3">
+              <button type="button" id="party-start-btn" class="party-start-btn w-full py-3 px-4 rounded-lg font-bold text-sm uppercase tracking-wide transition-all duration-200 flex items-center justify-center gap-2">
+                <span class="party-start-icon">▶</span>
+                Start Party
+              </button>
+            </div>
+            <div class="p-2 border-t border-white/10 flex-1 min-h-0 overflow-y-auto">
+              <div class="text-gray-500 uppercase text-xs font-semibold px-2 py-1.5">Party Members</div>
+              <div id="party-members-list" class="space-y-1">
+                <div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Party1" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                  <div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden" aria-hidden="true">P1</div>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-white text-sm font-medium truncate">No party yet</div>
+                    <div class="text-gray-500 text-xs">Click Start Party to invite friends</div>
+                  </div>
                 </div>
               </div>
             </div>

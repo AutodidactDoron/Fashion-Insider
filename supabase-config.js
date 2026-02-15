@@ -74,7 +74,6 @@
     var channel = supabase
       .channel('public:messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, function (payload) {
-        console.log('[Messages] Realtime INSERT payload:', payload);
         var row = payload && payload.new;
         if (!row || !onInsert) return;
         onInsert({

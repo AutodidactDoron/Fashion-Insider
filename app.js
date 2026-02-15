@@ -919,10 +919,10 @@
 
   function sendMessage() {
     if (!msgInput) return;
-    var text = msgInput.value.trim();
-    if (!text) return;
+    var content = msgInput.value.trim();
+    if (!content) return;
 
-    if (chatContainsBannedPattern(text)) {
+    if (chatContainsBannedPattern(content)) {
       shakeMessageInput();
       showChatToast(CHAT_WARNING_MSG);
       msgInput.value = '';
@@ -931,37 +931,28 @@
     }
 
     if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
-      var senderId = currentUserId;
-      var channelId = currentChannelId || 'general';
-      if (!senderId) {
-        window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
-          currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
-          senderId = currentUserId;
-          console.log('[Messages] sendMessage — sender_id:', senderId, 'channel_id:', channelId);
-          if (!senderId) {
-            showChatToast('Sign in or set supabase_user_id to send messages.');
-            return;
-          }
-          doInsert(senderId, channelId, text);
-        });
-        return;
-      }
-      console.log('[Messages] sendMessage — sender_id:', senderId, 'channel_id:', channelId);
-      doInsert(senderId, channelId, text);
+      window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
+        var senderId = uid || currentUserId || localStorage.getItem('supabase_user_id') || null;
+        if (!senderId) {
+          showChatToast('Sign in to send messages.');
+          return;
+        }
+        var channelId = 'general';
+        doInsert(senderId, channelId, content);
+      });
     } else {
-      appendMessageToUI({ sender_id: currentUserId, channel_id: currentChannelId, content: text }, true);
+      appendMessageToUI({ sender_id: currentUserId, channel_id: 'general', content: content }, true);
       msgInput.value = '';
     }
   }
 
-  function doInsert(senderId, channelId, text) {
-    window.FashionInsiderSupabase.insertMessage(senderId, channelId, text).then(function (res) {
-      console.log('[Messages] Insert success, response:', res);
+  function doInsert(senderId, channelId, content) {
+    window.FashionInsiderSupabase.insertMessage(senderId, channelId, content).then(function (res) {
       msgInput.value = '';
       msgInput.focus();
     }).catch(function (err) {
       console.error('[Messages] Insert error:', err);
-      appendMessageToUI({ sender_id: senderId, channel_id: channelId, content: text }, true);
+      appendMessageToUI({ sender_id: senderId, channel_id: channelId, content: content }, true);
       msgInput.value = '';
     });
   }
@@ -975,6 +966,45 @@
       }
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Party sidebar (Xbox-style): START PARTY + Party Members with profile pics
+  // ---------------------------------------------------------------------------
+  var partyStartBtn = document.getElementById('party-start-btn');
+  var partyMembersList = document.getElementById('party-members-list');
+  var partyActive = false;
+  var PARTY_MEMBERS_MOCK = [
+    { name: 'SneakerKing', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SK' },
+    { name: 'FashionPro', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=FP' },
+    { name: 'HypeTrader', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HT' }
+  ];
+
+  function renderPartyMembers() {
+    if (!partyMembersList) return;
+    if (!partyActive) {
+      partyMembersList.innerHTML = '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Party1" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" /><div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden">P</div><div class="min-w-0 flex-1"><div class="text-white text-sm font-medium truncate">No party yet</div><div class="text-gray-500 text-xs">Click Start Party to invite friends</div></div></div>';
+      return;
+    }
+    partyMembersList.innerHTML = PARTY_MEMBERS_MOCK.map(function (m) {
+      var initials = (m.name || 'U').slice(0, 2).toUpperCase();
+      return '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><img src="' + (m.avatar || '') + '" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" /><div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden">' + initials + '</div><div class="min-w-0 flex-1"><div class="text-white text-sm font-medium truncate">' + (m.name || 'Member') + '</div><div class="text-gray-500 text-xs">In party</div></div></div>';
+    }).join('');
+  }
+
+  if (partyStartBtn) {
+    partyStartBtn.addEventListener('click', function () {
+      partyActive = !partyActive;
+      if (partyActive) {
+        partyStartBtn.innerHTML = '<span class="party-start-icon">■</span> Leave Party';
+        partyStartBtn.classList.add('opacity-90');
+      } else {
+        partyStartBtn.innerHTML = '<span class="party-start-icon">▶</span> Start Party';
+        partyStartBtn.classList.remove('opacity-90');
+      }
+      renderPartyMembers();
+    });
+  }
+  renderPartyMembers();
 
   // ---------------------------------------------------------------------------
   // Community post input "+" and "What are you looking for?"
