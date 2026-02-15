@@ -833,15 +833,23 @@
   var messagesListEl = document.getElementById('messages-list');
   var newMessageToast = document.getElementById('new-message-toast');
   var currentUserId = localStorage.getItem('supabase_user_id') || 'local-user';
+  var currentReceiverId = localStorage.getItem('fashionInsider_receiver_id') || null;
+
+  function displayNameForSender(senderId, isOwn) {
+    if (isOwn) return 'You';
+    if (!senderId) return 'User';
+    var s = String(senderId);
+    return s.length > 8 ? s.slice(0, 8) + '…' : s;
+  }
 
   function appendMessageToUI(msg, isOwn) {
     if (!messagesListEl) return;
     var time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
-    var name = (msg.sender_name || 'User').trim();
-    var initials = name.split(/\s+/).map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || 'U';
+    var name = displayNameForSender(msg.sender_id, isOwn);
+    var initials = isOwn ? 'Y' : (name.slice(0, 1).toUpperCase() || 'U');
     var div = document.createElement('div');
     div.className = 'flex gap-3';
-    div.innerHTML = '<div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">' + initials + '</div><div><span class="font-semibold text-white">' + (name || 'User') + '</span><span class="text-gray-500 text-xs ml-2">' + time + '</span><p class="text-gray-300 text-sm mt-0.5">' + (msg.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>';
+    div.innerHTML = '<div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">' + initials + '</div><div><span class="font-semibold text-white">' + name + '</span><span class="text-gray-500 text-xs ml-2">' + time + '</span><p class="text-gray-300 text-sm mt-0.5">' + (msg.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>';
     messagesListEl.appendChild(div);
     messagesListEl.scrollTop = messagesListEl.scrollHeight;
   }
@@ -851,9 +859,16 @@
     return el && !el.classList.contains('hidden');
   }
 
+  function isMessageInCurrentConversation(msg) {
+    if (!currentReceiverId) return msg.sender_id === currentUserId || msg.receiver_id === currentUserId;
+    return (msg.sender_id === currentUserId && msg.receiver_id === currentReceiverId) ||
+           (msg.sender_id === currentReceiverId && msg.receiver_id === currentUserId);
+  }
+
   if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
-    window.FashionInsiderSupabase.setCurrentChannelId('general');
-    window.FashionInsiderSupabase.subscribeToMessages('general', function (msg) {
+    window.FashionInsiderSupabase.setCurrentReceiverId(currentReceiverId);
+    window.FashionInsiderSupabase.subscribeToMessages(currentUserId, function (msg) {
+      if (!isMessageInCurrentConversation(msg)) return;
       var isOwn = msg.sender_id === currentUserId;
       appendMessageToUI(msg, isOwn);
       if (!isOnMessagesSection()) {
@@ -866,15 +881,25 @@
       }
     });
     var supabase = window.FashionInsiderSupabase.getSupabase();
-    if (supabase && supabase.from('messages').select) {
-      supabase.from('messages').select('id,sender_id,sender_name,content,created_at').eq('channel_id', 'general').order('created_at', { ascending: true }).then(function (r) {
-        if (r.data && r.data.length && messagesListEl) {
-          messagesListEl.innerHTML = '';
-          r.data.forEach(function (row) {
-            appendMessageToUI({ sender_id: row.sender_id, sender_name: row.sender_name, content: row.content, created_at: row.created_at }, row.sender_id === currentUserId);
-          });
+    if (supabase && supabase.from('messages').select && messagesListEl) {
+      var fetchMessages = function () {
+        if (!currentReceiverId) {
+          messagesListEl.innerHTML = '<p class="text-gray-500 text-sm p-4">Set <code>fashionInsider_receiver_id</code> in localStorage (or select a user) to load messages.</p>';
+          return;
         }
-      });
+        supabase.from('messages').select('id,created_at,sender_id,receiver_id,content').or('sender_id.eq.' + currentUserId + ',receiver_id.eq.' + currentUserId).order('created_at', { ascending: true }).then(function (r) {
+          if (r.data && messagesListEl) {
+            messagesListEl.innerHTML = '';
+            r.data.filter(function (row) {
+              return (row.sender_id === currentUserId && row.receiver_id === currentReceiverId) || (row.sender_id === currentReceiverId && row.receiver_id === currentUserId);
+            }).forEach(function (row) {
+              appendMessageToUI({ sender_id: row.sender_id, receiver_id: row.receiver_id, content: row.content, created_at: row.created_at }, row.sender_id === currentUserId);
+            });
+          }
+        });
+      };
+      fetchMessages();
+      window.fashionInsiderFetchMessages = fetchMessages;
     }
   }
 
@@ -900,15 +925,19 @@
     }
 
     if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
-      window.FashionInsiderSupabase.insertMessage('general', currentUserId, 'Me', text).then(function () {
+      if (!currentReceiverId) {
+        showChatToast('Set receiver: localStorage.setItem("fashionInsider_receiver_id", "<other-user-id>")');
+        return;
+      }
+      window.FashionInsiderSupabase.insertMessage(currentUserId, currentReceiverId, text).then(function () {
         msgInput.value = '';
         msgInput.focus();
       }).catch(function () {
-        appendMessageToUI({ sender_id: currentUserId, sender_name: 'Me', content: text, created_at: new Date().toISOString() }, true);
+        appendMessageToUI({ sender_id: currentUserId, receiver_id: currentReceiverId, content: text, created_at: new Date().toISOString() }, true);
         msgInput.value = '';
       });
     } else {
-      appendMessageToUI({ sender_id: currentUserId, sender_name: 'Me', content: text, created_at: new Date().toISOString() }, true);
+      appendMessageToUI({ sender_id: currentUserId, receiver_id: currentReceiverId, content: text, created_at: new Date().toISOString() }, true);
       msgInput.value = '';
     }
   }

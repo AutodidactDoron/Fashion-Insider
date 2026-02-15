@@ -26,41 +26,46 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Messages: insert and subscribe to INSERT for real-time
+  // Messages: schema (id, created_at, sender_id, receiver_id, content)
+  // Insert uses sender_id, receiver_id, content. Realtime on public.messages.
   // ---------------------------------------------------------------------------
   var messagesChannel = null;
-  var currentChannelId = 'general';
+  var currentReceiverId = null;
 
-  function insertMessage(channelId, senderId, senderName, content) {
+  function insertMessage(senderId, receiverId, content) {
     if (!supabase) return Promise.reject(new Error('Supabase not configured'));
     return supabase
       .from('messages')
       .insert({
-        channel_id: channelId || currentChannelId,
         sender_id: senderId,
-        sender_name: senderName || 'User',
-        content: content,
-        created_at: new Date().toISOString()
+        receiver_id: receiverId,
+        content: content
       })
       .select()
       .single();
   }
 
-  function subscribeToMessages(channelId, onInsert) {
+  function subscribeToMessages(currentUserId, onInsert) {
     if (!supabase || !onInsert) return;
     if (messagesChannel) {
       supabase.removeChannel(messagesChannel);
       messagesChannel = null;
     }
-    var ch = channelId || currentChannelId;
     messagesChannel = supabase
-      .channel('messages-' + ch)
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: 'channel_id=eq.' + ch },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         function (payload) {
           var row = payload.new;
-          if (row && onInsert) onInsert({ id: row.id, sender_id: row.sender_id, sender_name: row.sender_name, content: row.content, created_at: row.created_at });
+          if (!row || !onInsert) return;
+          onInsert({
+            id: row.id,
+            sender_id: row.sender_id,
+            receiver_id: row.receiver_id,
+            content: row.content,
+            created_at: row.created_at
+          });
         }
       )
       .subscribe();
@@ -101,8 +106,8 @@
     insertMessage: insertMessage,
     subscribeToMessages: subscribeToMessages,
     unsubscribeMessages: unsubscribeMessages,
-    setCurrentChannelId: function (id) { currentChannelId = id || 'general'; },
-    getCurrentChannelId: function () { return currentChannelId; },
+    setCurrentReceiverId: function (id) { currentReceiverId = id; },
+    getCurrentReceiverId: function () { return currentReceiverId; },
     updateWalletBalance: updateWalletBalance,
     fetchWalletBalance: fetchWalletBalance
   };
