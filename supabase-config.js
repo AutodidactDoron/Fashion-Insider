@@ -26,11 +26,11 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Messages: public.messages — sender_id (uuid), receiver_id (uuid), content (text)
-  // Insert uses exactly those columns. Realtime channel 'public:messages'.
+  // Messages: public.messages — sender_id, channel_id, content
+  // Insert uses exactly those columns. Realtime on public.messages.
   // ---------------------------------------------------------------------------
   var messagesChannel = null;
-  var currentReceiverId = null;
+  var currentChannelId = 'general';
 
   function getAuthUserId() {
     if (!supabase || !supabase.auth) return Promise.resolve(null);
@@ -44,11 +44,11 @@
     });
   }
 
-  function insertMessage(senderId, receiverId, content) {
+  function insertMessage(senderId, channelId, content) {
     if (!supabase) return Promise.reject(new Error('Supabase not configured'));
     var row = {
       sender_id: senderId,
-      receiver_id: receiverId,
+      channel_id: channelId || currentChannelId,
       content: content
     };
     console.log('[Messages] Insert payload:', row);
@@ -56,8 +56,11 @@
       .from('messages')
       .insert(row)
       .then(function (res) {
-        console.log('[Messages] Insert response:', res.data, 'error:', res.error);
-        if (res.error) return Promise.reject(res.error);
+        if (res.error) {
+          console.error('[Messages] Insert failed:', res.error.message, res.error.details, res.error.hint, res.error);
+          return Promise.reject(res.error);
+        }
+        console.log('[Messages] Insert response:', res.data);
         return res;
       });
   }
@@ -76,7 +79,7 @@
         if (!row || !onInsert) return;
         onInsert({
           sender_id: row.sender_id,
-          receiver_id: row.receiver_id,
+          channel_id: row.channel_id,
           content: row.content
         });
       })
@@ -123,8 +126,8 @@
     insertMessage: insertMessage,
     subscribeToMessages: subscribeToMessages,
     unsubscribeMessages: unsubscribeMessages,
-    setCurrentReceiverId: function (id) { currentReceiverId = id; },
-    getCurrentReceiverId: function () { return currentReceiverId; },
+    setCurrentChannelId: function (id) { currentChannelId = id || 'general'; },
+    getCurrentChannelId: function () { return currentChannelId; },
     updateWalletBalance: updateWalletBalance,
     fetchWalletBalance: fetchWalletBalance
   };
