@@ -11,7 +11,7 @@
   // State (in-memory only)
   // ---------------------------------------------------------------------------
   var likedIds = {}; // product id -> true
-  var balance = 5450;
+  var balance = parseInt(localStorage.getItem('fashionInsider_balance'), 10) || 5450;
   var FIRST_BUY_KEY = 'fashionInsider_firstBuyDone';
   var TRADE_FEE_CR = 25;
   var pendingBuyProduct = null;
@@ -72,10 +72,7 @@
   // Build one product card HTML (with heart, graph, price range, Trade, BUY)
   // ---------------------------------------------------------------------------
   function buildProductCard(p) {
-    var priceRange = formatPriceRange(p.priceLow, p.priceHigh);
     var priceRangeCR = formatPriceRangeCR(p.priceLow, p.priceHigh);
-    var midUsd = (p.priceLow + p.priceHigh) / 2;
-    var equivStr = formatPriceEquiv(midUsd);
     var graphHtml = renderMiniGraph(p.priceHistory);
     var heartClass = likedIds[p.id] ? 'text-red-500' : 'text-gray-400';
     return (
@@ -94,11 +91,10 @@
           '<h3 class="font-bold text-white truncate">' + p.name + '</h3>' +
           '<p class="text-gray-400 text-sm">' + p.brand + '</p>' +
           '<div class="mt-2 text-xs text-gray-500">Price range</div>' +
-          '<div class="text-white font-mono font-semibold text-sm">' + priceRange + '</div>' +
-          '<div class="text-gray-400 text-xs">' + priceRangeCR + '</div>' +
+          '<div class="text-white font-mono font-semibold text-sm">' + priceRangeCR + '</div>' +
           '<div class="mt-2">' + graphHtml + '</div>' +
           '<div class="mt-3 flex items-end justify-between gap-2">' +
-            '<div><div class="text-xs text-gray-400">PRICE</div><div class="text-white font-bold">' + Number(p.price).toLocaleString() + ' CR <span class="text-gray-400 font-normal text-xs">(' + equivStr + ')</span></div></div>' +
+            '<div><div class="text-xs text-gray-400">PRICE</div><div class="text-fi-success text-lg font-bold">' + Number(p.price).toLocaleString() + ' CR</div></div>' +
             '<div class="flex gap-2">' +
               '<button type="button" class="btn-trade px-3 py-2 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:opacity-90 transition-opacity" data-product-id="' + p.id + '" data-tooltip="Open trade screen for this item">Trade</button>' +
               '<button type="button" class="btn-buy px-3 py-2 rounded-lg bg-fi-success text-white text-xs font-bold hover:opacity-90 transition-opacity" data-product-id="' + p.id + '" data-tooltip="Buy now with your credits">BUY</button>' +
@@ -118,13 +114,12 @@
     if (!grid || !list || !list.length) return;
     grid.innerHTML = list.map(buildProductCard).join('');
 
-    // Stats row: update from products (avg in CR + currency equivalent)
+    // Stats row: update from products (credits only)
     var avgPrice = Math.round(list.reduce(function (sum, p) { return sum + p.price; }, 0) / list.length);
-    var avgPriceUsd = avgPrice / USD_TO_CR;
     var avgEl = document.querySelector('#dashboard-section .grid.grid-cols-4 .text-2xl.font-bold');
     if (avgEl && avgEl.closest('.bg-card')) {
       var cards = document.querySelectorAll('#dashboard-section .grid.grid-cols-4 .bg-card');
-      if (cards[1]) cards[1].querySelector('.text-2xl').innerHTML = avgPrice.toLocaleString() + ' CR <span class="text-gray-400 font-normal text-sm">(' + formatPriceEquiv(avgPriceUsd) + ')</span>';
+      if (cards[1]) cards[1].querySelector('.text-2xl').textContent = avgPrice.toLocaleString() + ' CR';
     }
     var listingEl = document.querySelector('#dashboard-section .grid.grid-cols-4 .bg-card .text-2xl');
     if (listingEl) listingEl.textContent = list.length;
@@ -269,6 +264,8 @@
 
   var tradeCancelBtn = document.getElementById('trade-cancel-btn');
   var tradeSendBtn = document.getElementById('trade-send-btn');
+  var TRADE_FEE_PCT = 0.05;
+  var TRADE_FEE_MIN_CR = 50;
   if (tradeCancelBtn) tradeCancelBtn.addEventListener('click', closeTradeModal);
   if (tradeSendBtn) tradeSendBtn.addEventListener('click', function () {
     var total = yourOfferItems.length + (yourOfferCredits > 0 ? 1 : 0);
@@ -276,9 +273,17 @@
       alert('Add at least one item or credits to your offer before sending.');
       return;
     }
+    var offerValue = yourOfferItems.reduce(function (sum, p) { return sum + (Number(p.price) || 0); }, 0) + (yourOfferCredits || 0);
+    var fee = Math.max(TRADE_FEE_MIN_CR, Math.ceil(offerValue * TRADE_FEE_PCT));
+    var required = fee + (yourOfferCredits || 0);
+    if (balance < required) {
+      alert('Insufficient balance. You need ' + required.toLocaleString() + ' CR (fee ' + fee.toLocaleString() + ' CR' + (yourOfferCredits ? ' + ' + yourOfferCredits.toLocaleString() + ' CR offered' : '') + '). You have ' + balance.toLocaleString() + ' CR.');
+      return;
+    }
+    document.dispatchEvent(new CustomEvent('balance-deduct', { detail: { amount: fee } }));
     var firstItem = yourOfferItems.length ? yourOfferItems[0] : null;
     if (typeof startActiveTrade === 'function') startActiveTrade({ name: firstItem ? firstItem.name : 'Trade offer', id: firstItem ? firstItem.id : '' });
-    alert('Trade offer sent! The other party can accept or counter in My Trades.');
+    alert('Trade offer sent! ' + fee + ' CR fee applied. The other party can accept or counter in My Trades.');
     closeTradeModal();
   });
 
@@ -421,11 +426,9 @@
     document.getElementById('product-detail-thumb').alt = p.name;
     document.getElementById('product-detail-name').textContent = p.name;
     document.getElementById('product-detail-brand').textContent = p.brand;
-    var rangeCurrency = formatPriceRange(p.priceLow, p.priceHigh);
     var rangeCR = formatPriceRangeCR(p.priceLow, p.priceHigh);
-    var midUsd = (p.priceLow + p.priceHigh) / 2;
-    document.getElementById('product-detail-range').textContent = rangeCurrency + ' · ' + rangeCR;
-    document.getElementById('product-detail-cr').textContent = p.price.toLocaleString() + ' CR (' + formatPriceEquiv(midUsd) + ')';
+    document.getElementById('product-detail-range').textContent = rangeCR;
+    document.getElementById('product-detail-cr').textContent = p.price.toLocaleString() + ' CR';
 
     var chartEl = document.getElementById('product-detail-chart');
     var yAxisEl = document.getElementById('product-detail-yaxis');
@@ -508,10 +511,9 @@
     if (brandEl) brandEl.textContent = item.brand || '';
     if (rangeEl) {
       if (item._fromMarket && window.marketService) {
-        var toILS = window.marketService.priceToILS;
-        rangeEl.textContent = '₪' + toILS(item.retailPrice, false) + ' – ₪' + toILS(item.resellPrice, false) + ' (מחיר שוק, כולל מע"מ)';
+        rangeEl.textContent = formatPriceRangeCR(item.retailPrice || 0, item.resellPrice || 0);
       } else {
-        rangeEl.innerHTML = formatPriceRange(item.priceLow, item.priceHigh) + '<br><span class="text-gray-400 text-xs">' + formatPriceRangeCR(item.priceLow, item.priceHigh) + '</span>';
+        rangeEl.textContent = formatPriceRangeCR(item.priceLow, item.priceHigh);
       }
     }
     var conditionWrap = document.getElementById('price-list-detail-condition-wrap');
@@ -520,19 +522,20 @@
       if (conditionWrap) conditionWrap.classList.remove('hidden');
       if (conditionSelect) conditionSelect.value = '0';
       var isUsed = false;
-      if (crEl) crEl.textContent = '₪' + window.marketService.priceToILS(item.resellPrice, isUsed) + ' (מחיר משוער)';
+      var resellCR = Math.round((item.resellPrice || 0) * USD_TO_CR);
+      if (crEl) crEl.textContent = resellCR.toLocaleString() + ' CR';
       if (conditionSelect) {
         conditionSelect.onchange = function () {
           var used = conditionSelect.value === '1';
           if (crEl && priceListDetailCurrentItem && priceListDetailCurrentItem._fromMarket && window.marketService) {
-            crEl.textContent = '₪' + window.marketService.priceToILS(priceListDetailCurrentItem.resellPrice, used) + ' (מחיר משוער)';
+            var r = (priceListDetailCurrentItem.resellPrice || 0) * USD_TO_CR;
+            crEl.textContent = Math.round(r).toLocaleString() + ' CR';
           }
         };
       }
     } else {
       if (conditionWrap) conditionWrap.classList.add('hidden');
-      var midUsd = (item.priceLow + item.priceHigh) / 2;
-      if (crEl) crEl.textContent = (item.price != null ? Number(item.price).toLocaleString() : '') + ' CR (' + formatPriceEquiv(midUsd) + ')';
+      if (crEl) crEl.textContent = (item.price != null ? Number(item.price).toLocaleString() : '') + ' CR';
     }
     var hist = item.priceHistory || [];
     if (chartEl && hist.length) {
@@ -827,6 +830,62 @@
     setTimeout(function () { msgInput.classList.remove('shake'); }, 500);
   }
 
+  var messagesListEl = document.getElementById('messages-list');
+  var newMessageToast = document.getElementById('new-message-toast');
+  var currentUserId = localStorage.getItem('supabase_user_id') || 'local-user';
+
+  function appendMessageToUI(msg, isOwn) {
+    if (!messagesListEl) return;
+    var time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+    var name = (msg.sender_name || 'User').trim();
+    var initials = name.split(/\s+/).map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 2) || 'U';
+    var div = document.createElement('div');
+    div.className = 'flex gap-3';
+    div.innerHTML = '<div class="w-8 h-8 rounded-full bg-fi-accent flex items-center justify-center text-white text-xs font-bold shrink-0">' + initials + '</div><div><span class="font-semibold text-white">' + (name || 'User') + '</span><span class="text-gray-500 text-xs ml-2">' + time + '</span><p class="text-gray-300 text-sm mt-0.5">' + (msg.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p></div>';
+    messagesListEl.appendChild(div);
+    messagesListEl.scrollTop = messagesListEl.scrollHeight;
+  }
+
+  function isOnMessagesSection() {
+    var el = document.getElementById('messages-section');
+    return el && !el.classList.contains('hidden');
+  }
+
+  if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
+    window.FashionInsiderSupabase.setCurrentChannelId('general');
+    window.FashionInsiderSupabase.subscribeToMessages('general', function (msg) {
+      var isOwn = msg.sender_id === currentUserId;
+      appendMessageToUI(msg, isOwn);
+      if (!isOnMessagesSection()) {
+        if (newMessageToast) {
+          newMessageToast.classList.remove('hidden');
+          newMessageToast.style.display = '';
+          clearTimeout(newMessageToast._tid);
+          newMessageToast._tid = setTimeout(function () { newMessageToast.classList.add('hidden'); }, 5000);
+        }
+      }
+    });
+    var supabase = window.FashionInsiderSupabase.getSupabase();
+    if (supabase && supabase.from('messages').select) {
+      supabase.from('messages').select('id,sender_id,sender_name,content,created_at').eq('channel_id', 'general').order('created_at', { ascending: true }).then(function (r) {
+        if (r.data && r.data.length && messagesListEl) {
+          messagesListEl.innerHTML = '';
+          r.data.forEach(function (row) {
+            appendMessageToUI({ sender_id: row.sender_id, sender_name: row.sender_name, content: row.content, created_at: row.created_at }, row.sender_id === currentUserId);
+          });
+        }
+      });
+    }
+  }
+
+  if (newMessageToast) {
+    newMessageToast.addEventListener('click', function () {
+      newMessageToast.classList.add('hidden');
+      var btn = document.querySelector('.header-nav[data-section="messages-section"]');
+      if (btn) btn.click();
+    });
+  }
+
   function sendMessage() {
     if (!msgInput) return;
     var text = msgInput.value.trim();
@@ -840,8 +899,18 @@
       return;
     }
 
-    alert('Message sent: "' + text.slice(0, 50) + (text.length > 50 ? '..."' : '"'));
-    msgInput.value = '';
+    if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
+      window.FashionInsiderSupabase.insertMessage('general', currentUserId, 'Me', text).then(function () {
+        msgInput.value = '';
+        msgInput.focus();
+      }).catch(function () {
+        appendMessageToUI({ sender_id: currentUserId, sender_name: 'Me', content: text, created_at: new Date().toISOString() }, true);
+        msgInput.value = '';
+      });
+    } else {
+      appendMessageToUI({ sender_id: currentUserId, sender_name: 'Me', content: text, created_at: new Date().toISOString() }, true);
+      msgInput.value = '';
+    }
   }
 
   if (msgInput && msgSend) {
@@ -1129,13 +1198,15 @@
         if (priceListSort === 'name') list.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
         if (priceListSort === 'price') list.sort(function (a, b) { return (a.resellPrice || a.price || 0) - (b.resellPrice || b.price || 0); });
 
-        var toILS = window.marketService.priceToILS;
         var rows = list.map(function (p) {
+          var retail = p.retailPrice || 0;
+          var resell = p.resellPrice || 0;
           var hist = p.priceHistory || [];
           var change = hist.length >= 2 ? hist[hist.length - 1].value - hist[hist.length - 2].value : 0;
+          var changeCR = Math.round(change * USD_TO_CR);
           var changeClass = change >= 0 ? 'text-fi-success' : 'text-red-400';
-          var changeStr = change >= 0 ? '↑ ₪' + Math.round(change * 3.8 * 1.2) : '↓ ₪' + Math.round(Math.abs(change) * 3.8 * 1.2);
-          var priceRangeStr = '₪' + toILS(p.retailPrice, false) + ' – ₪' + toILS(p.resellPrice, false);
+          var changeStr = change >= 0 ? '↑ +' + changeCR.toLocaleString() + ' CR' : '↓ -' + Math.abs(changeCR).toLocaleString() + ' CR';
+          var priceRangeCRStr = formatPriceRangeCR(retail, resell);
           var vals = hist.slice(-4).map(function (h) { return h.value; });
           var min = Math.min.apply(null, vals.length ? vals : [0]);
           var max = Math.max.apply(null, vals.length ? vals : [1]);
@@ -1144,10 +1215,10 @@
           var barColor = change >= 0 ? 'bg-fi-success' : 'bg-red-500';
           var bars = barHeights.map(function (h) { return '<span class="w-1 ' + barColor + ' rounded-sm" style="height:' + h + '%"></span>'; }).join('');
           var safeName = (p.name || '').replace(/"/g, '&quot;');
-          return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + (p.imageURL || p.image || '') + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + (p.name || '') + '</div><div class="text-gray-500 text-xs">' + (p.brand || '') + '</div></div></div></td><td class="py-3 px-4"><div class="text-white">' + priceRangeStr + '</div><div class="text-gray-500 text-xs">מחיר שוק (כולל מע&quot;מ)</div></td><td class="py-3 px-4"><span class="' + changeClass + '">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-tooltip="Open full details">View Details</button></td></tr>';
+          return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + (p.imageURL || p.image || '') + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + (p.name || '') + '</div><div class="text-gray-500 text-xs">' + (p.brand || '') + '</div></div></div></td><td class="py-3 px-4"><div class="text-white font-semibold">' + priceRangeCRStr + '</div><div class="text-gray-500 text-xs">Market Range</div></td><td class="py-3 px-4"><span class="' + changeClass + '">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-black text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-tooltip="Open full details">View Details</button></td></tr>';
         }).join('');
         tbody.innerHTML = rows;
-        if (countEl) countEl.textContent = 'Showing ' + list.length + ' of ' + items.length + ' items (₪ ILS incl. tax)';
+        if (countEl) countEl.textContent = 'Showing ' + list.length + ' of ' + items.length + ' items';
 
         document.querySelectorAll('#price-list-section .price-list-view-details').forEach(function (btn) {
           btn.addEventListener('click', function () {
@@ -1170,9 +1241,9 @@
     var rows = list.map(function (p) {
       var hist = p.priceHistory || [];
       var change = hist.length >= 2 ? hist[hist.length - 1].value - hist[hist.length - 2].value : 0;
+      var changeCR = Math.round(change * USD_TO_CR);
       var changeClass = change >= 0 ? 'text-fi-success' : 'text-red-400';
-      var changeStr = formatPriceChange(change);
-      var priceRangeStr = formatPriceRange(p.priceLow, p.priceHigh);
+      var changeStr = change >= 0 ? '↑ +' + changeCR.toLocaleString() + ' CR' : '↓ -' + Math.abs(changeCR).toLocaleString() + ' CR';
       var priceRangeCRStr = formatPriceRangeCR(p.priceLow, p.priceHigh);
       var vals = hist.slice(-4).map(function (h) { return h.value; });
       var min = Math.min.apply(null, vals.length ? vals : [0]);
@@ -1182,7 +1253,7 @@
       var barColor = change >= 0 ? 'bg-fi-success' : 'bg-red-500';
       var bars = barHeights.map(function (h) { return '<span class="w-1 ' + barColor + ' rounded-sm" style="height:' + h + '%"></span>'; }).join('');
       var safeName = p.name.replace(/"/g, '&quot;');
-      return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + p.imageURL + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + p.name + '</div><div class="text-gray-500 text-xs">' + p.brand + '</div></div></div></td><td class="py-3 px-4"><div class="text-white">' + priceRangeStr + '</div><div class="text-gray-400 text-xs">' + priceRangeCRStr + '</div><div class="text-gray-500 text-xs">Market Range</div></td><td class="py-3 px-4"><span class="' + changeClass + ' flex items-center gap-1">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-product-name="' + safeName + '" data-tooltip="Open full details and price chart for this item">View Details</button></td></tr>';
+      return '<tr class="hover:bg-white/5"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-lg bg-gray-700 flex items-center justify-center overflow-hidden"><img src="' + p.imageURL + '" alt="" class="w-full h-full object-cover" onerror="this.style.display=\'none\'"></div><div><div class="font-medium text-white">' + p.name + '</div><div class="text-gray-500 text-xs">' + p.brand + '</div></div></div></td><td class="py-3 px-4"><div class="text-white font-semibold">' + priceRangeCRStr + '</div><div class="text-gray-500 text-xs">Market Range</div></td><td class="py-3 px-4"><span class="' + changeClass + ' flex items-center gap-1">' + changeStr + '</span></td><td class="py-3 px-4"><div class="w-16 h-8 flex items-end gap-0.5">' + bars + '</div></td><td class="py-3 px-4 text-right"><button type="button" class="price-list-view-details px-3 py-1.5 rounded-lg bg-fi-accent text-white text-xs font-semibold hover:bg-fi-accent-hover transition-colors" data-product-id="' + (p.id || '') + '" data-product-name="' + safeName + '" data-tooltip="Open full details and price chart for this item">View Details</button></td></tr>';
     }).join('');
     tbody.innerHTML = rows;
 
@@ -1278,7 +1349,7 @@
     renderPriceList();
     if (currentDetailProduct) {
       var rangeEl = document.getElementById('product-detail-range');
-      if (rangeEl) rangeEl.textContent = formatPriceRange(currentDetailProduct.priceLow, currentDetailProduct.priceHigh);
+      if (rangeEl) rangeEl.textContent = formatPriceRangeCR(currentDetailProduct.priceLow, currentDetailProduct.priceHigh);
       var chartEl = document.getElementById('product-detail-chart');
       var yAxisEl = document.getElementById('product-detail-yaxis');
       var xAxisEl = document.getElementById('product-detail-xaxis');

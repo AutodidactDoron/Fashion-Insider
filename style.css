@@ -419,6 +419,16 @@
 .chat-toast.hidden {
   display: none !important;
 }
+#new-message-toast.hidden {
+  display: none !important;
+}
+#new-message-toast:not(.hidden) {
+  animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .messages-input.shake {
   animation: chat-input-shake 0.5s ease-in-out;
 }
@@ -867,12 +877,15 @@ table tbody tr:hover {
 }
 
 .product-detail-range {
-  color: #8b949e;
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .product-detail-cr {
-  color: #58a6ff;
-  font-weight: 700;
+  color: #2ea043;
+  font-size: 1.25rem;
+  font-weight: 800;
   font-family: 'Courier New', monospace;
 }
 
