@@ -866,32 +866,31 @@
   if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
     window.FashionInsiderSupabase.setCurrentChannelId(currentChannelId);
     window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
-      currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
-      if (!currentUserId) console.warn('[Messages] No auth user; set supabase_user_id in localStorage or sign in.');
-      else console.log('[Messages] Using sender_id:', currentUserId);
-      window.FashionInsiderSupabase.subscribeToMessages(currentUserId, function (msg) {
-        if (!isMessageInCurrentChannel(msg)) return;
-        var isOwn = msg.sender_id === currentUserId;
-        appendMessageToUI(msg, isOwn);
-        if (!isOnMessagesSection()) {
-          if (newMessageToast) {
-            newMessageToast.classList.remove('hidden');
-            newMessageToast.style.display = '';
-            clearTimeout(newMessageToast._tid);
-            newMessageToast._tid = setTimeout(function () { newMessageToast.classList.add('hidden'); }, 5000);
+      currentUserId = uid || null;
+      if (currentUserId) {
+        window.FashionInsiderSupabase.subscribeToMessages(currentUserId, function (msg) {
+          if (!isMessageInCurrentChannel(msg)) return;
+          var isOwn = msg.sender_id === currentUserId;
+          appendMessageToUI(msg, isOwn);
+          if (!isOnMessagesSection()) {
+            if (newMessageToast) {
+              newMessageToast.classList.remove('hidden');
+              newMessageToast.style.display = '';
+              clearTimeout(newMessageToast._tid);
+              newMessageToast._tid = setTimeout(function () { newMessageToast.classList.add('hidden'); }, 5000);
+            }
           }
-        }
-      });
+        });
+      }
     });
     var supabase = window.FashionInsiderSupabase.getSupabase();
     if (supabase && supabase.from('messages').select && messagesListEl) {
       var fetchMessages = function () {
         if (!currentUserId) {
-          messagesListEl.innerHTML = '<p class="text-gray-500 text-sm p-4">Sign in or set <code>supabase_user_id</code> to load messages.</p>';
+          messagesListEl.innerHTML = '<p class="text-gray-500 text-sm p-4">Sign in to load messages.</p>';
           return;
         }
         supabase.from('messages').select('sender_id,channel_id,content').eq('channel_id', currentChannelId).then(function (r) {
-          console.log('[Messages] Fetch response:', r.data, 'error:', r.error);
           if (r.error) console.error('[Messages] Fetch error:', r.error);
           if (r.data && messagesListEl) {
             messagesListEl.innerHTML = '';
@@ -902,7 +901,7 @@
         });
       };
       window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
-        currentUserId = uid || localStorage.getItem('supabase_user_id') || null;
+        currentUserId = uid || null;
         fetchMessages();
       });
       window.fashionInsiderFetchMessages = fetchMessages;
@@ -932,13 +931,12 @@
 
     if (window.FashionInsiderSupabase && window.FashionInsiderSupabase.isSupabaseEnabled()) {
       window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
-        var senderId = uid || currentUserId || localStorage.getItem('supabase_user_id') || null;
+        var senderId = uid || null;
         if (!senderId) {
           showChatToast('Sign in to send messages.');
           return;
         }
-        var channelId = 'general';
-        doInsert(senderId, channelId, content);
+        doInsert(senderId, 'general', content);
       });
     } else {
       appendMessageToUI({ sender_id: currentUserId, channel_id: 'general', content: content }, true);
@@ -968,43 +966,85 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Party sidebar (Xbox-style): START PARTY + Party Members with profile pics
+  // Party sidebar (Xbox-style): real parties table, avatars/emails from profiles
   // ---------------------------------------------------------------------------
   var partyStartBtn = document.getElementById('party-start-btn');
   var partyMembersList = document.getElementById('party-members-list');
-  var partyActive = false;
-  var PARTY_MEMBERS_MOCK = [
-    { name: 'SneakerKing', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SK' },
-    { name: 'FashionPro', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=FP' },
-    { name: 'HypeTrader', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=HT' }
-  ];
+  var currentPartyId = null;
 
-  function renderPartyMembers() {
+  function renderPartyMembers(members) {
     if (!partyMembersList) return;
-    if (!partyActive) {
-      partyMembersList.innerHTML = '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Party1" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" /><div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden">P</div><div class="min-w-0 flex-1"><div class="text-white text-sm font-medium truncate">No party yet</div><div class="text-gray-500 text-xs">Click Start Party to invite friends</div></div></div>';
+    if (!members || members.length === 0) {
+      partyMembersList.innerHTML = '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-500 text-xs flex-shrink-0">—</div><div class="min-w-0 flex-1"><div class="text-gray-400 text-sm truncate">No party yet</div><div class="text-gray-500 text-xs">Click Start Party to invite friends</div></div></div>';
       return;
     }
-    partyMembersList.innerHTML = PARTY_MEMBERS_MOCK.map(function (m) {
-      var initials = (m.name || 'U').slice(0, 2).toUpperCase();
-      return '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><img src="' + (m.avatar || '') + '" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" /><div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden">' + initials + '</div><div class="min-w-0 flex-1"><div class="text-white text-sm font-medium truncate">' + (m.name || 'Member') + '</div><div class="text-gray-500 text-xs">In party</div></div></div>';
+    partyMembersList.innerHTML = members.map(function (m) {
+      var name = m.display_name || m.email || (m.user_id ? String(m.user_id).slice(0, 8) : 'Member');
+      var initials = (name || 'U').slice(0, 2).toUpperCase();
+      var avatar = m.avatar_url || ('https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(m.user_id || ''));
+      return '<div class="party-member flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"><img src="' + avatar + '" alt="" class="w-10 h-10 rounded-full object-cover border-2 border-fi-accent flex-shrink-0" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" /><div class="w-10 h-10 rounded-full bg-fi-accent/80 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hidden">' + initials + '</div><div class="min-w-0 flex-1"><div class="text-white text-sm font-medium truncate">' + (name || 'Member').replace(/</g, '&lt;') + '</div><div class="text-gray-500 text-xs truncate">' + (m.email || 'In party').replace(/</g, '&lt;') + '</div></div></div>';
     }).join('');
+  }
+
+  function refreshPartyMembers() {
+    if (!currentPartyId || !window.FashionInsiderSupabase) return;
+    window.FashionInsiderSupabase.getPartyMembers(currentPartyId).then(renderPartyMembers);
   }
 
   if (partyStartBtn) {
     partyStartBtn.addEventListener('click', function () {
-      partyActive = !partyActive;
-      if (partyActive) {
-        partyStartBtn.innerHTML = '<span class="party-start-icon">■</span> Leave Party';
-        partyStartBtn.classList.add('opacity-90');
-      } else {
-        partyStartBtn.innerHTML = '<span class="party-start-icon">▶</span> Start Party';
-        partyStartBtn.classList.remove('opacity-90');
+      var api = window.FashionInsiderSupabase;
+      if (!api || !api.isSupabaseEnabled()) {
+        renderPartyMembers([]);
+        return;
       }
-      renderPartyMembers();
+      if (currentPartyId) {
+        api.leaveParty(currentPartyId).then(function () {
+          api.unsubscribeParty();
+          currentPartyId = null;
+          partyStartBtn.innerHTML = '<span class="party-start-icon">▶</span> Start Party';
+          partyStartBtn.classList.remove('opacity-90');
+          renderPartyMembers([]);
+        }).catch(function (err) {
+          console.error('[Party] Leave error:', err);
+        });
+        return;
+      }
+      partyStartBtn.disabled = true;
+      api.getAuthUserId().then(function (uid) {
+        if (!uid) {
+          partyStartBtn.disabled = false;
+          return;
+        }
+        api.createParty().then(function (partyId) {
+          if (!partyId) {
+            partyStartBtn.disabled = false;
+            return;
+          }
+          currentPartyId = partyId;
+          return api.getAuthUser().then(function (user) {
+            var email = user && user.email;
+            var name = (user && user.user_metadata && user.user_metadata.full_name) || (email ? email.split('@')[0] : null);
+            return api.upsertProfile(uid, { email: email || null, display_name: name || null, avatar_url: null });
+          }).then(function () {
+            return api.joinParty(partyId);
+          });
+        }).then(function () {
+          partyStartBtn.disabled = false;
+          partyStartBtn.innerHTML = '<span class="party-start-icon">■</span> Leave Party';
+          partyStartBtn.classList.add('opacity-90');
+          refreshPartyMembers();
+          api.subscribeToPartyMembers(currentPartyId, refreshPartyMembers);
+        }).catch(function (err) {
+          console.error('[Party] Create/join error:', err);
+          partyStartBtn.disabled = false;
+          currentPartyId = null;
+        });
+      });
     });
   }
-  renderPartyMembers();
+
+  renderPartyMembers([]);
 
   // ---------------------------------------------------------------------------
   // Community post input "+" and "What are you looking for?"

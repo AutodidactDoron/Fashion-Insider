@@ -35,11 +35,19 @@
   function getAuthUserId() {
     if (!supabase || !supabase.auth) return Promise.resolve(null);
     return supabase.auth.getUser().then(function (res) {
-      var id = res.data && res.data.user && res.data.user.id;
-      if (id) console.log('[Messages] Current user id (auth):', id);
-      return id || null;
+      return (res.data && res.data.user && res.data.user.id) || null;
     }).catch(function (err) {
-      console.error('[Messages] auth.getUser error:', err);
+      console.error('[Auth] getUser error:', err);
+      return null;
+    });
+  }
+
+  function getAuthUser() {
+    if (!supabase || !supabase.auth) return Promise.resolve(null);
+    return supabase.auth.getUser().then(function (res) {
+      return (res.data && res.data.user) || null;
+    }).catch(function (err) {
+      console.error('[Auth] getUser error:', err);
       return null;
     });
   }
@@ -118,16 +126,95 @@
       .then(function (r) { return r.data && r.data.wallet_balance != null ? r.data.wallet_balance : null; });
   }
 
+  // ---------------------------------------------------------------------------
+  // Parties: create party, join/leave, fetch members with profiles, realtime
+  // ---------------------------------------------------------------------------
+  var partyChannel = null;
+
+  function createParty() {
+    if (!supabase) return Promise.reject(new Error('Supabase not configured'));
+    return getAuthUserId().then(function (uid) {
+      if (!uid) return Promise.reject(new Error('Not authenticated'));
+      return supabase.from('parties').insert({ created_by: uid }).select('id').single();
+    }).then(function (res) {
+      if (res.error) return Promise.reject(res.error);
+      return res.data && res.data.id;
+    });
+  }
+
+  function joinParty(partyId) {
+    if (!supabase) return Promise.reject(new Error('Supabase not configured'));
+    return getAuthUserId().then(function (uid) {
+      if (!uid) return Promise.reject(new Error('Not authenticated'));
+      return supabase.from('party_members').insert({ party_id: partyId, user_id: uid }).select().single();
+    }).then(function (res) {
+      if (res.error) return Promise.reject(res.error);
+      return res.data;
+    });
+  }
+
+  function leaveParty(partyId) {
+    if (!supabase) return Promise.reject(new Error('Supabase not configured'));
+    return getAuthUserId().then(function (uid) {
+      if (!uid) return Promise.reject(new Error('Not authenticated'));
+      return supabase.from('party_members').delete().eq('party_id', partyId).eq('user_id', uid);
+    });
+  }
+
+  function getPartyMembers(partyId) {
+    if (!supabase) return Promise.resolve([]);
+    return supabase.from('party_members').select('user_id, profiles(email, avatar_url, display_name)').eq('party_id', partyId).then(function (r) {
+      if (r.error) return [];
+      return (r.data || []).map(function (row) {
+        var p = row.profiles || {};
+        return { user_id: row.user_id, email: p.email, avatar_url: p.avatar_url, display_name: p.display_name };
+      });
+    });
+  }
+
+  function subscribeToPartyMembers(partyId, onChanges) {
+    if (!supabase || !partyId || !onChanges) return;
+    if (partyChannel) {
+      supabase.removeChannel(partyChannel);
+      partyChannel = null;
+    }
+    partyChannel = supabase.channel('party-members-' + partyId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'party_members', filter: 'party_id=eq.' + partyId }, function () {
+        getPartyMembers(partyId).then(onChanges);
+      })
+      .subscribe();
+  }
+
+  function unsubscribeParty() {
+    if (supabase && partyChannel) {
+      supabase.removeChannel(partyChannel);
+      partyChannel = null;
+    }
+  }
+
+  function upsertProfile(id, data) {
+    if (!supabase) return Promise.reject(new Error('Supabase not configured'));
+    return supabase.from('profiles').upsert({ id: id, updated_at: new Date().toISOString(), email: data.email, display_name: data.display_name, avatar_url: data.avatar_url }, { onConflict: 'id' });
+  }
+
   window.FashionInsiderSupabase = {
     getSupabase: getSupabase,
     isSupabaseEnabled: isSupabaseEnabled,
     getAuthUserId: getAuthUserId,
+    getAuthUser: getAuthUser,
     insertMessage: insertMessage,
     subscribeToMessages: subscribeToMessages,
     unsubscribeMessages: unsubscribeMessages,
     setCurrentChannelId: function (id) { currentChannelId = id || 'general'; },
     getCurrentChannelId: function () { return currentChannelId; },
     updateWalletBalance: updateWalletBalance,
-    fetchWalletBalance: fetchWalletBalance
+    fetchWalletBalance: fetchWalletBalance,
+    createParty: createParty,
+    joinParty: joinParty,
+    leaveParty: leaveParty,
+    getPartyMembers: getPartyMembers,
+    subscribeToPartyMembers: subscribeToPartyMembers,
+    unsubscribeParty: unsubscribeParty,
+    upsertProfile: upsertProfile
   };
 })();

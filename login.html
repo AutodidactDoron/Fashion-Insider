@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – Fashion Insider</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'app-bg': '#0d1117',
+            'card': 'rgba(22, 27, 34, 0.9)',
+            'fi-accent': '#58a6ff',
+            'fi-success': '#2ea043',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .auth-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.5); }
+  </style>
+</head>
+<body class="min-h-screen bg-app-bg text-white flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-white">Fashion <span class="text-fi-accent">Insider</span></h1>
+      <p class="text-gray-400 text-sm mt-1">Sign in to your account</p>
+    </div>
+
+    <div class="bg-card border border-white/10 rounded-xl p-6 shadow-xl">
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+          <input type="email" id="login-email" required autocomplete="email"
+            class="auth-input w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500"
+            placeholder="you@example.com" />
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+          <input type="password" id="login-password" required autocomplete="current-password"
+            class="auth-input w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500"
+            placeholder="••••••••" />
+        </div>
+        <p id="login-error" class="text-red-400 text-sm hidden"></p>
+        <button type="submit" id="login-submit"
+          class="w-full py-3 px-4 rounded-lg bg-fi-accent hover:bg-blue-500 text-black font-semibold transition-colors disabled:opacity-50">
+          Sign in
+        </button>
+      </form>
+
+      <div class="relative my-6">
+        <span class="absolute inset-0 flex items-center"><span class="w-full border-t border-white/10"></span></span>
+        <span class="relative flex justify-center text-xs text-gray-500 uppercase">Or continue with</span>
+      </div>
+
+      <button type="button" id="login-google" disabled
+        class="w-full py-3 px-4 rounded-lg border border-white/20 text-gray-400 font-medium cursor-not-allowed opacity-75"
+        title="Coming soon">
+        Login with Google (coming soon)
+      </button>
+
+      <p class="mt-6 text-center text-sm text-gray-400">
+        Don't have an account? <a href="signup.html" class="text-fi-accent hover:underline">Sign up</a>
+      </p>
+    </div>
+
+    <p class="text-center text-gray-500 text-xs mt-6">
+      <a href="index.html" class="hover:text-gray-400">Back to app</a>
+    </p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="auth-config.js"></script>
+  <script>
+    (function () {
+      var form = document.getElementById('login-form');
+      var emailInput = document.getElementById('login-email');
+      var passwordInput = document.getElementById('login-password');
+      var errorEl = document.getElementById('login-error');
+      var submitBtn = document.getElementById('login-submit');
+
+      function showError(msg) {
+        errorEl.textContent = msg || '';
+        errorEl.classList.toggle('hidden', !msg);
+      }
+
+      function setLoading(loading) {
+        submitBtn.disabled = loading;
+        submitBtn.textContent = loading ? 'Signing in…' : 'Sign in';
+      }
+
+      // פתיחה מ־file:// חוסמת fetch – מבקשים מהמשתמש להריץ שרת מקומי
+      if (window.location.protocol === 'file:') {
+        showError('לא ניתן להתחבר מ־file. הרץ שרת מקומי: npx serve בתיקיית הפרויקט, ואז פתח http://localhost:3000/login.html');
+        form.addEventListener('submit', function (e) { e.preventDefault(); });
+        return;
+      }
+
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        showError('Supabase is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in auth-config.js.');
+        form.addEventListener('submit', function (e) { e.preventDefault(); });
+        return;
+      }
+
+      var supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = emailInput.value.trim();
+        var password = passwordInput.value;
+        if (!email || !password) return;
+        showError('');
+        setLoading(true);
+        supabase.auth.signInWithPassword({ email: email, password: password })
+          .then(function (res) {
+            if (res.error) {
+              showError(res.error.message || 'Sign in failed');
+              setLoading(false);
+              return;
+            }
+            var redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+            window.location.href = redirect;
+          })
+          .catch(function (err) {
+            // Failed to fetch = חסימת הבקשה (למשל פתיחה מ־file://) – הודעה ברורה למשתמש
+            var msg = (err && err.message) ? err.message : '';
+            if (msg.toLowerCase().indexOf('fetch') !== -1 || err instanceof TypeError) {
+              showError('הבקשה נחסמה. פתח את האתר דרך שרת (npx serve או Live Server) ולא בלחיצה כפולה על הקובץ.');
+            } else {
+              showError(msg || 'Sign in failed');
+            }
+            setLoading(false);
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

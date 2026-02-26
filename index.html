@@ -170,6 +170,8 @@
         <div id="header-profile-icon" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden ps-open-profile cursor-pointer hover:bg-white/15 transition-colors display-avatar shrink-0" data-tooltip="Open profile and settings" role="button" tabindex="0" title="Open profile and settings">
           <img id="header-avatar-img" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="" class="w-full h-full object-cover" />
         </div>
+        <a href="login.html" class="text-gray-400 hover:text-white text-sm font-medium whitespace-nowrap" data-tooltip="Sign in to your account">Sign in</a>
+        <a href="signup.html" class="px-3 py-1.5 rounded-lg bg-fi-accent text-white text-sm font-semibold hover:bg-fi-accent-hover transition-colors whitespace-nowrap" data-tooltip="Create an account">Sign up</a>
       </div>
       <!-- BUY CREDITS / TOP UP -->
       <div class="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2 pl-2 border-l border-white/10 min-w-0">
@@ -1533,8 +1535,9 @@
   <!-- New Message toast: shown when user is on another page and receives a message -->
   <div id="new-message-toast" class="fixed bottom-6 right-6 z-[60] px-4 py-3 rounded-lg bg-fi-accent text-white text-sm font-medium shadow-lg hidden cursor-pointer" role="button" tabindex="0" aria-label="New message - click to open Messages">New Message</div>
 
-  <!-- Optional: set window.SUPABASE_URL and window.SUPABASE_ANON_KEY before supabase-config.js to enable real-time chat and wallet sync -->
+  <!-- Set SUPABASE_URL and SUPABASE_ANON_KEY in auth-config.js for Auth and Messages -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="auth-config.js"></script>
   <script src="supabase-config.js"></script>
   <script src="https://www.paypal.com/sdk/js?client-id=AS609oRjizkVQ2XAUQgeBPTxd1h5ACPhaxEX4SkPMEf-NhxBtToNmCWQIOUjfQGjeu6ruhjxjFsFUALq&currency=USD"></script>
   <script src="mock-data.js"></script>
@@ -1659,17 +1662,37 @@
         });
       }
 
+      function requireAuthForMessages(sectionId, next) {
+        if (sectionId !== 'messages-section') {
+          next();
+          return;
+        }
+        if (!window.FashionInsiderSupabase || !window.FashionInsiderSupabase.isSupabaseEnabled()) {
+          next();
+          return;
+        }
+        window.FashionInsiderSupabase.getAuthUserId().then(function (uid) {
+          if (!uid) {
+            window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href || 'index.html');
+            return;
+          }
+          next();
+        });
+      }
+
       // -------------------------------------------------------------------------
       // Wire header nav: clicking any link with data-section="..." switches view
+      // Messages requires login; redirect to login page if not authenticated.
       // -------------------------------------------------------------------------
       document.querySelectorAll('.header-nav').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          showSection(btn.getAttribute('data-section'));
+          var sectionId = btn.getAttribute('data-section');
+          requireAuthForMessages(sectionId, function () { showSection(sectionId); });
         });
       });
 
       // -------------------------------------------------------------------------
-      // Wire sidebar nav: same behavior as header (for learning – both control sections)
+      // Wire sidebar nav: same behavior as header (Messages requires auth)
       // On mobile, closing the sidebar after navigation so the drawer doesn't stay open.
       // -------------------------------------------------------------------------
       var sidebarEl = document.getElementById('sidebar');
@@ -1696,8 +1719,15 @@
 
       document.querySelectorAll('.nav-link').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          showSection(btn.getAttribute('data-section'));
-          closeSidebarMobile();
+          var sectionId = btn.getAttribute('data-section');
+          if (!sectionId) {
+            closeSidebarMobile();
+            return;
+          }
+          requireAuthForMessages(sectionId, function () {
+            showSection(sectionId);
+            closeSidebarMobile();
+          });
         });
       });
 

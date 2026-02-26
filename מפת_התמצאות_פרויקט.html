@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מפת התמצאות – Fashion Insider Bootcamp</title>
+  <style>
+    html, body { direction: rtl; text-align: right; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1.5rem; line-height: 1.6; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: right; }
+    th { background: #f5f5f5; }
+    ul { padding-right: 1.5rem; }
+    hr { margin: 1.5rem 0; border: none; border-top: 1px solid #eee; }
+    .note { font-size: 0.9rem; color: #666; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+
+<h1>מפת התמצאות – Fashion Insider Bootcamp</h1>
+
+<p>מסמך ברמה עסקית-לוגית: איפה מה יושב, מה תפקיד הקבצים החשובים, ואיך זורם המשתמש.</p>
+
+<hr>
+
+<h2>1. מבנה התיקיות</h2>
+
+<table>
+  <tr><th>תיקייה / מיקום</th><th>מטרה</th></tr>
+  <tr><td><strong>שורש הפרויקט</strong> (איפה ש־index.html, app.js)</td><td>האתר הראשי: מסך אחד שמכיל את כל המסכים (דשבורד, קהילה, מסרים, עסקאות, תשלומים). העיצוב, התפריט והתוכן מוגדרים כאן.</td></tr>
+  <tr><td><strong>style.css</strong> (בשורש)</td><td>כל העיצוב הויזואלי של האתר: צבעים, כפתורים, מודלים, אנימציות, עיצוב צ'אט ופאנל Party.</td></tr>
+  <tr><td><strong>app/</strong></td><td>אפליקציית React נפרדת לכניסה למערכת: דף התחברות והרשמה. רצה עם npm run dev ומשתמשת ב־.env.</td></tr>
+  <tr><td><strong>app/src/</strong></td><td>הלוגיקה של דפי ההתחברות/הרשמה (React) וחיבור ל־Supabase לאימות משתמשים.</td></tr>
+  <tr><td><strong>supabase/</strong></td><td>הגדרות מסד הנתונים: סקריפטים ליצירת טבלאות (הודעות, צדדים, פרופילים) והרשאות (RLS). מריצים אותם ב־Supabase ולא באתר.</td></tr>
+  <tr><td><strong>assets/</strong></td><td>תמונות וקבצי מדיה (למשל תמונות מוצרים).</td></tr>
+</table>
+
+<p><strong>איפה יושב מה:</strong></p>
+<ul>
+  <li><strong>עיצוב:</strong> style.css + קלאסים ב־index.html (Tailwind).</li>
+  <li><strong>לוגיקה עסקית:</strong> app.js (רכישות, עסקאות, הודעות, Party, איזון) ו־supabase-config.js (חיבור ל־DB, הודעות, צדדים).</li>
+  <li><strong>מסד נתונים:</strong> חיבור מהאפליקציה ל־Supabase בענן; ההגדרות עצמן ב־supabase/migrations ו־auth-config.js / .env.</li>
+</ul>
+
+<hr>
+
+<h2>2. חמישה קבצים קריטיים</h2>
+
+<table>
+  <tr><th>קובץ</th><th>תפקיד במשפט אחד</th></tr>
+  <tr><td><strong>index.html</strong></td><td>המסך הראשי של האתר: מבנה כל הדפים (דשבורד, קהילה, מסרים, עסקאות), התפריט, המודלים (תשלום, משיכה, צ'אט, Party) וטעינת כל הסקריפטים.</td></tr>
+  <tr><td><strong>app.js</strong></td><td>הלוגיקה המרכזית: הצגת מוצרים, רכישה באשראי, עסקאות ומשלוח הצעות, צ'אט, Party, איזון ומסרים – רוב האינטראקציה של המשתמש עוברת דרכו.</td></tr>
+  <tr><td><strong>supabase-config.js</strong></td><td>חיבור ל־Supabase: שליחת וקבלת הודעות, יצירת/יציאה מפאנל Party וסנכרון עם מסד הנתונים.</td></tr>
+  <tr><td><strong>auth-config.js</strong></td><td>הגדרת כתובת ומפתח Supabase עבור דפי ההתחברות/הרשמה (HTML) – בלי זה יופיע "Supabase is not configured".</td></tr>
+  <tr><td><strong>style.css</strong></td><td>עיצוב האתר: מראה הכפתורים, המודלים, הצ'אט ו־Party – כל מה שהמשתמש רואה מבחינה ויזואלית.</td></tr>
+</table>
+
+<hr>
+
+<h2>3. זרימת משתמש: נכנס לאתר ולוחץ על "קנה" (BUY)</h2>
+
+<p>בפרויקט אין "הוסף לסל" קלאסי – יש כפתור <strong>"BUY"</strong> על כל מוצר שמוביל לאישור רכישה ואז ביצוע הרכישה. הזרימה:</p>
+
+<p><strong>1. כניסה לאתר</strong><br>
+הדפדפן טוען את index.html. אחריו נטענים לפי הסדר: auth-config.js → supabase-config.js → mock-data.js → marketData.js → marketService.js → app.js.</p>
+
+<p><strong>2. מה קורה כשהדף נטען</strong></p>
+<ul>
+  <li>mock-data.js ו־marketData.js מספקים את רשימת המוצרים (או מ־marketService אם יש חיבור ל־DB).</li>
+  <li>app.js מצייר את רשת המוצרים בדשבורד ומצמיד לכל כרטיס כפתור "BUY".</li>
+</ul>
+
+<p><strong>3. לחיצה על "BUY"</strong></p>
+<ul>
+  <li>האירוע מתעדכן ב־app.js (לחיצה על כפתור עם המחלקה/מזהה של BUY).</li>
+  <li>app.js בודק איזון (קרדיטים), מחשב מחיר + עמלת הגנה, ושולח אירוע להצגת מודל האישור.</li>
+  <li>index.html מכיל את מודל "אישור רכישה" (buy-confirm-modal) – הוא מוצג עם שם המוצר, מחיר וסה"כ.</li>
+</ul>
+
+<p><strong>4. אישור הרכישה במודל</strong></p>
+<ul>
+  <li>לחיצה על "Pay total" / אישור מפעילה אירוע שמטופל ב־index.html (או ב־app.js דרך מאזין לאירוע).</li>
+  <li>מתבצעת הורדת האיזון (balance), עדכון תצוגת האיזון, וסגירת המודל – הלוגיקה והסכומים מנוהלים ב־app.js ובסקריפטים בתוך index.html (איזון, balance-deduct).</li>
+</ul>
+
+<p><strong>סיכום:</strong><br>
+index.html (מבנה + מודלים) → app.js (לוגיקת BUY, איזון, הצגת מודל) → index.html (מודל אישור) → app.js / index.html (הורדת איזון וסיום).</p>
+
+<hr>
+
+<p class="note">מסמך זה מתאר את המבנה והזרימה ברמת מוצר; לא כולל הסבר על תחביר או שורות קוד.</p>
+
+</body>
+</html>
