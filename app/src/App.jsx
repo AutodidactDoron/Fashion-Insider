@@ -2,6 +2,23 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import MainLayout from './components/MainLayout';
+import CommunityContent from './components/CommunityContent';
+import ProtectedRoute from './components/ProtectedRoute'; 
+import MyCloset from './components/MyCloset';
+import MyPostsContent from './components/MyPostsContent';
+import MyTradesContent from './components/MyTradesContent';
+import AdminPanel from './components/AdminPanel';
+import AdminRoute from './components/AdminRoute'; 
+
+function ComingSoonPage({ title }) {
+  return (
+    <div className="bg-[#111113] rounded-xl p-6 border border-white/10">
+      <h1 className="text-2xl font-bold text-white">{title}</h1>
+      <p className="text-gray-400 mt-2">This page route is live. Content will be migrated next.</p>
+    </div>
+  );
+}
 
 export default function App() {
   return (
@@ -9,8 +26,45 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* === המעטפת הכללית (Layout) - כולם רואים את התפריטים === */}
+        <Route element={<MainLayout />}>
+          
+          {/* 🟢 הגישה החופשית (Top of Funnel - Freemium) 🟢 */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/community" element={<CommunityContent />} />
+          <Route path="/my-posts" element={<MyPostsContent/>} />
+
+          {/* 🔴 הכספת הסגורה (The Vault - Traders Only) 🔴 */}
+          <Route 
+            path="/closet" 
+            element={<ProtectedRoute><MyCloset /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/trades" 
+            element={<ProtectedRoute><MyTradesContent /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/messages" 
+            element={<ProtectedRoute><ComingSoonPage title="Messages" /></ProtectedRoute>} 
+          />
+          <Route 
+            path="/settings" 
+            element={<ProtectedRoute><ComingSoonPage title="Settings" /></ProtectedRoute>} 
+          />
+        </Route>
+
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        
+        {/* ⚡ The Admin Route - Isolated and Secured ⚡ */}
+        <Route 
+          path="/admin" 
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   );

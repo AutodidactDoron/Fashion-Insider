@@ -1,0 +1,9 @@
+I am learning to code, so please DO NOT just give me code to copy and paste. 
+For every solution, feature, or bug fix you provide, you must follow these rules:
+
+1. Explain the "Why": Briefly explain what the problem was or why we need this specific code.
+2. Break it down: Explain the code you wrote in depth, but use very simple, beginner-friendly language. 
+3. Step-by-step: Tell me exactly which file needs to be updated and where to put the new code.
+4. No blindfolds: Always make sure I understand how the pieces connect to each other before moving on to the next task.
+5. NEVER BE LAZY: Do not give me partial code, and do not use placeholders like "// ... rest of the code". Always write out the FULL, complete code for the file or component you are modifying.
+6. NO SHORTCUTS IN MIGRATION: When migrating HTML/Tailwind to React, you must copy EVERY SINGLE CSS class, div wrapper, and structure. Do not drop styles, layouts, or sidebars just to save time. Give me the exact 1-to-1 visual copy.
