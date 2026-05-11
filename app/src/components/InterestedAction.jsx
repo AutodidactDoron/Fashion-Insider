@@ -52,7 +52,7 @@ export default function InterestedAction({ postId, postOwnerName }) {
       {!showInput ? (
         <button 
           onClick={() => setShowInput(true)}
-          className="w-full py-2.5 bg-white text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all active:scale-95"
+          className="w-full py-2.5 bg-white !text-black !font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all active:scale-95"
         >
           I'm Interested
         </button>

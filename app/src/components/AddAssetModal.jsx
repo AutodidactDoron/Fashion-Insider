@@ -110,7 +110,7 @@ export default function AddAssetModal({ isOpen, onClose }) {
           proof_image_url: uploadedImageUrls[0], 
           is_verified: false,
           purchase_price: 0
-        }]);
+        }]).select(); // <-- THE FIX: Forcing representation return to bypass 406
         if (error) throw error;
       } else {
         const { error } = await supabase.from('catalog_requests').insert([{
@@ -120,7 +120,7 @@ export default function AddAssetModal({ isOpen, onClose }) {
           size: selectedSize,
           proof_image_urls: uploadedImageUrls,
           status: 'pending_review'
-        }]);
+        }]).select(); // <-- THE FIX: Forcing representation return to bypass 406
         if (error) throw error;
       }
 

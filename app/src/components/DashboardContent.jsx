@@ -166,7 +166,7 @@ export default function DashboardContent() {
             </div>
             <div className="mt-6 flex justify-between items-center border-t border-white/5 pt-6">
               <div className="text-sm text-gray-400">Current est. <span className="text-white font-bold">21,000 CR</span></div>
-              <button onClick={() => setSelectedShoe(null)} className="px-6 py-2 rounded bg-white text-black font-bold text-sm hover:bg-gray-200 transition-colors">CLOSE</button>
+              <button onClick={() => setSelectedShoe(null)} className="px-6 py-2 rounded bg-white !text-black !font-bold text-sm hover:bg-gray-200 transition-colors">CLOSE</button>
             </div>
           </div>
         </div>
