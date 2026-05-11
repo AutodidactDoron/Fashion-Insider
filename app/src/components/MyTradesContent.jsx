@@ -76,7 +76,7 @@ export default function MyTradesContent() {
                 </div>
                 <button 
                   onClick={() => setActiveRoom(trade)}
-                  className="px-6 py-3 bg-white text-black! font-black! text-xs rounded uppercase hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                  className="px-6 py-3 bg-white !text-black !font-black text-xs rounded uppercase hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]"
                 >
                   {trade.status === 'completed' ? 'View Receipt' : 'Enter Room'}
                 </button>

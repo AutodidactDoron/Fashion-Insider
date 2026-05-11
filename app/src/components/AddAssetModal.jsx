@@ -214,7 +214,7 @@ export default function AddAssetModal({ isOpen, onClose }) {
               <button 
                 onClick={() => setStep(2)}
                 disabled={ingestionMode === 'index' ? !selectedItem : (!unlistedBrand || !unlistedName)}
-                className="mt-6 w-full py-4 rounded-xl bg-white text-black! font-black! uppercase tracking-widest hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-6 w-full py-4 rounded-xl bg-white !text-black !font-black uppercase tracking-widest hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Proceed to Authentication
               </button>

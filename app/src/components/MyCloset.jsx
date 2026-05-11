@@ -90,7 +90,7 @@ export default function MyCloset() {
       ) : inventory.length === 0 ? (
         <div className="bg-[#111113] border border-white/5 rounded-2xl p-12 text-center flex flex-col items-center justify-center shadow-2xl relative overflow-hidden">
           <h3 className="text-2xl font-black text-white mb-2 relative z-10 uppercase tracking-wide">Your Closet is Empty</h3>
-          <button onClick={() => setIsAddAssetOpen(true)} className="px-8 py-3.5 rounded-xl bg-white text-black! font-black! text-sm uppercase tracking-widest hover:bg-gray-200 mt-4 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-105 relative z-10">
+          <button onClick={() => setIsAddAssetOpen(true)} className="px-8 py-3.5 rounded-xl bg-white !text-black !font-black text-sm uppercase tracking-widest hover:bg-gray-200 mt-4 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-105 relative z-10">
             ADD NEW ASSET
           </button>
         </div>
