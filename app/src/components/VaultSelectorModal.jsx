@@ -54,7 +54,7 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
         {/* Header */}
         <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01] shrink-0">
           <div>
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter">Select Assets</h2>
+            <h2 className="text-xl !font-black text-white uppercase tracking-tighter">Select Assets</h2>
             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">From Your Closet</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 transition-colors">
