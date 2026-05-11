@@ -113,7 +113,7 @@ export default function CommunityContent() {
                 <button
                   type="button"
                   onClick={handleBroadcast} 
-                  className="w-9 h-9 sm:w-auto sm:px-6 sm:py-3 shrink-0 flex items-center justify-center rounded-lg bg-white text-black font-bold text-sm hover:bg-gray-200 transition-colors"
+                  className="w-9 h-9 sm:w-auto sm:px-6 sm:py-3 shrink-0 flex items-center justify-center rounded-lg bg-white text-black! font-bold! text-sm hover:bg-gray-200 transition-colors"
                 >
                   <span className="hidden sm:inline">BROADCAST</span>
                   <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
