@@ -5,35 +5,40 @@ import { supabase } from '../supabaseClient';
 export default function AdminRoute({ children }) {
   const [isAdmin, setIsAdmin] = useState(null); 
 
+  // ⚡ THE VAULT KEY: Hardcoded Master Admin Clearance
+  const MASTER_ADMIN_EMAIL = "dddd4444hhhh@gmail.com"; 
+
   useEffect(() => {
     const checkSecurityClearance = async () => {
-      // ⚡ Dynamic Identity Extraction: Pulling the actual logged-in user
-      const activeUser = localStorage.getItem('currentUser');
+      // 1. Fetch the cryptographically secure session from Supabase
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
 
-      // Immediate Rejection: If no one is logged in, kill the request
-      if (!activeUser) {
+      // Immediate Rejection: No valid token, kill the request
+      if (authError || !session) {
         setIsAdmin(false);
         return;
       }
 
-      // Zero-latency check against the Admin Ledger using the DYNAMIC user
-      const { data, error } = await supabase
-        .from('platform_admins')
-        .select('user_name')
-        .eq('user_name', activeUser) 
-        .single();
-
-      if (data) {
-        setIsAdmin(true); // User is verified on the ledger
+      // 2. Zero-Latency Memory Check (Bypassing DB query overhead)
+      if (session.user.email === MASTER_ADMIN_EMAIL) {
+        setIsAdmin(true); 
       } else {
         setIsAdmin(false); // Intruder detected
-        if (error && error.code !== 'PGRST116') {
-            console.error("Clearance Check Error:", error);
-        }
       }
     };
 
     checkSecurityClearance();
+
+    // 3. Real-time lockdown listener (If admin logs out, boot them out immediately)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && session.user.email === MASTER_ADMIN_EMAIL) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (isAdmin === null) {
