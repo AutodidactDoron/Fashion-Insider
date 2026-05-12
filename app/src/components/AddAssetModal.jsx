@@ -62,10 +62,11 @@ export default function AddAssetModal({ isOpen, onClose }) {
   };
 
   const handleSubmitForVerification = async () => {
-    // ⚡ Strict Dynamic Identity Verification
-    const activeUser = localStorage.getItem('currentUser');
-    if (!activeUser) {
-      alert("Auth Error: No active session found. Please log in.");
+    // ⚡ Strict Dynamic Identity Verification (Server-Side)
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      alert("Auth Error: Session expired or invalid. Please log in again.");
       return;
     }
 
@@ -81,7 +82,8 @@ export default function AddAssetModal({ isOpen, onClose }) {
     try {
       const uploadPromises = proofFiles.map(async (file) => {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${activeUser}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        // שימוש ב-ID המאובטח של המשתמש לשם הקובץ במקום שם חופשי
+        const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = `pending/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -103,23 +105,23 @@ export default function AddAssetModal({ isOpen, onClose }) {
 
       if (ingestionMode === 'index') {
         const { error } = await supabase.from('user_closet_items').insert([{
-          user_name: activeUser, // Injects Doron or Builder based on Console
+          user_name: user.id, // <-- THE FIX: Using the secure Auth ID
           catalog_item_id: selectedItem.id,
           size: selectedSize,
           condition_status: 'DS',
           proof_image_url: uploadedImageUrls[0], 
           is_verified: false
-        }]).select(); // <-- THE FIX: Forcing representation return to bypass 406
+        }]).select(); 
         if (error) throw error;
       } else {
         const { error } = await supabase.from('catalog_requests').insert([{
-          user_name: activeUser, // Injects Doron or Builder based on Console
+          user_name: user.id, // <-- THE FIX: Using the secure Auth ID
           proposed_brand: unlistedBrand,
           proposed_name: unlistedName,
           size: selectedSize,
           proof_image_urls: uploadedImageUrls,
           status: 'pending_review'
-        }]).select(); // <-- THE FIX: Forcing representation return to bypass 406
+        }]).select(); 
         if (error) throw error;
       }
 

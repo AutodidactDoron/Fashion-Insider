@@ -6,21 +6,29 @@ export default function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 1. בדיקה אקטיבית ראשונה
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    checkAuth();
+
+    // 2. ⚡ מנגנון הגנה בזמן אמת - האזנה לשינויי Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
     });
+
+    // ניקוי המאזין כשהקומפוננטה יורדת מהמסך
+    return () => subscription.unsubscribe();
   }, []);
 
-  // בזמן שהמערכת בודקת את הסטטוס, לא מציגים כלום כדי למנוע הבהובים
   if (isAuthenticated === null) {
-    return <div className="min-h-screen bg-black" />; 
+    return <div className="min-h-screen bg-fi-dark" />; 
   }
 
-  // אם אין משתמש - זרוק אותו לעמוד ההתחברות
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // אם יש משתמש - תן לו להיכנס לעמוד המבוקש
   return children;
 }

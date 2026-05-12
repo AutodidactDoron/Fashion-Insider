@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState(''); // הוספת שדה הזהות
+  const [username, setUsername] = useState(''); 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,6 @@ export default function Signup() {
     setSuccess('');
     setLoading(true);
 
-    // 1. אימות בסיסי ב-Frontend למניעת קריאות שרת מיותרות
     if (username.length < 3) {
       setError('Username must be at least 3 characters long.');
       setLoading(false);
@@ -25,22 +24,20 @@ export default function Signup() {
     }
 
     try {
-      // 2. יצירת המשתמש במערכת האותנטיקציה של Supabase
       const { data, error: err } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
-          data: { user_name: username } // שמירת השם ב-Metadata
+          data: { user_name: username } 
         }
       });
 
       if (err) throw err;
 
-      // 3. הזרקת המשתמש החדש לטבלת הפרופילים שלנו (The Business Logic)
       if (data.user) {
         const { error: profileErr } = await supabase.from('profiles').insert([
           { 
-            id: data.user.id, // קישור קשיח ל-ID המאובטח
+            id: data.user.id, 
             user_name: username,
             xp_points: 0,
             trust_score: 100.0
@@ -48,7 +45,6 @@ export default function Signup() {
         ]);
 
         if (profileErr) {
-          // מנגנון הגנה: אם השם תפוס, הטבלה תזרוק שגיאה כי הגדרנו UNIQUE
           if (profileErr.code === '23505') {
             throw new Error('This username is already taken. Please choose another.');
           }
@@ -69,19 +65,18 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-fi-dark">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white">
-            Fashion <span className="text-[#58a6ff]">Insider</span>
+          <h1 className="text-3xl font-bold text-white">
+            Fashion <span className="text-fi-accent">Insider</span>
           </h1>
           <p className="text-gray-400 text-sm mt-1">Create your trading identity</p>
         </div>
 
-        <div className="bg-[rgba(22,27,34,0.9)] border border-white/10 rounded-xl p-6 shadow-xl">
+        <div className="bg-fi-surface border border-white/10 rounded-xl p-6 shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* --- השדה החדש: Username --- */}
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
                 Username
@@ -92,12 +87,11 @@ export default function Signup() {
                 required
                 autoComplete="off"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))} // מניעת רווחים ותווים מיוחדים
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#58a6ff]"
-                placeholder="HighStakesFounder"
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))} 
+                className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-fi-accent focus:border-fi-accent transition-colors"
+                placeholder="trader_99"
               />
             </div>
-            {/* --------------------------- */}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
@@ -110,8 +104,8 @@ export default function Signup() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#58a6ff]"
-                placeholder="you@example.com"
+                className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-fi-accent focus:border-fi-accent transition-colors"
+                placeholder="investor@example.com"
               />
             </div>
             
@@ -127,22 +121,31 @@ export default function Signup() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#58a6ff]"
+                className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-fi-accent focus:border-fi-accent transition-colors"
                 placeholder="•••••••• (min 6 characters)"
               />
             </div>
             
             {error && (
-              <p role="alert" className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                {error}
-              </p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p role="alert" className="text-red-400 text-sm text-center font-medium">
+                  {error}
+                </p>
+              </div>
             )}
-            {success && <p className="text-[#2ea043] text-sm font-bold bg-[#2ea043]/10 border border-[#2ea043]/30 rounded-lg px-3 py-2">{success}</p>}
+            
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-4">
+                <p className="text-green-400 text-sm text-center font-medium">
+                  {success}
+                </p>
+              </div>
+            )}
             
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-lg bg-[#58a6ff] hover:bg-[#79b8ff] text-black font-black uppercase tracking-widest transition-colors disabled:opacity-50 mt-4"
+              className="w-full py-3 px-4 rounded-lg bg-fi-accent hover:bg-blue-400 text-black font-black uppercase tracking-widest transition-colors disabled:opacity-50 mt-4"
             >
               {loading ? 'Authenticating...' : 'Enter the Market'}
             </button>
@@ -150,7 +153,7 @@ export default function Signup() {
 
           <p className="mt-6 text-center text-sm text-gray-400">
             Already have an identity?{' '}
-            <Link to="/login" className="text-[#58a6ff] hover:underline font-bold">
+            <Link to="/login" className="text-fi-accent hover:underline font-bold">
               Sign in
             </Link>
           </p>
