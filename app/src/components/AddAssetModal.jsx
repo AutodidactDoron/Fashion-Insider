@@ -108,8 +108,7 @@ export default function AddAssetModal({ isOpen, onClose }) {
           size: selectedSize,
           condition_status: 'DS',
           proof_image_url: uploadedImageUrls[0], 
-          is_verified: false,
-          purchase_price: 0
+          is_verified: false
         }]).select(); // <-- THE FIX: Forcing representation return to bypass 406
         if (error) throw error;
       } else {
