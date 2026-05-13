@@ -14,7 +14,6 @@ export default function AdminPanel() {
     if (activeTab === 'catalog') fetchMasterCatalog();
     if (activeTab === 'community') fetchCommunityPosts();
 
-    // LIVE ENGINE: Realtime dashboard updates without refreshing
     const adminChannel = supabase.channel('admin_live_feed')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_closet_items' }, () => {
         if (activeTab === 'triage') fetchTriageQueues();
@@ -29,10 +28,58 @@ export default function AdminPanel() {
 
   const fetchTriageQueues = async () => {
     setLoading(true);
-    const { data: itemsData } = await supabase.from('user_closet_items').select(`id, user_name, size, proof_image_url, added_at, catalog_items (name, brand)`).eq('is_verified', false).order('added_at', { ascending: true });
-    const { data: requestsData } = await supabase.from('catalog_requests').select('*').eq('status', 'pending_review').order('submitted_at', { ascending: true });
-    if (itemsData) setPendingItems(itemsData);
-    if (requestsData) setPendingRequests(requestsData);
+    
+    // 1. Fetching raw items without the native SQL join to avoid Foreign Key crashes
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('user_closet_items')
+      .select(`id, user_name, size, proof_image_url, added_at, catalog_items (name, brand)`)
+      .eq('is_verified', false)
+      .order('added_at', { ascending: true });
+
+    if (itemsError) console.error("Items Fetch Error:", itemsError);
+
+    const { data: requestsData, error: reqError } = await supabase
+      .from('catalog_requests')
+      .select('*')
+      .eq('status', 'pending_review')
+      .order('submitted_at', { ascending: true });
+
+    if (reqError) console.error("Requests Fetch Error:", reqError);
+
+    // 2. Client-Side Join: Extract all unique UUIDs and fetch their display names
+    const uniqueUUIDs = new Set();
+    if (itemsData) itemsData.forEach(i => uniqueUUIDs.add(i.user_name));
+    if (requestsData) requestsData.forEach(r => uniqueUUIDs.add(r.user_name));
+
+    const uuidArray = Array.from(uniqueUUIDs);
+    const profilesMap = {};
+
+    if (uuidArray.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, user_name')
+        .in('id', uuidArray);
+        
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profilesMap[profile.id] = profile.user_name;
+        });
+      }
+    }
+
+    // 3. Injecting the readable names back into the payload
+    const enrichedItems = itemsData ? itemsData.map(item => ({
+      ...item,
+      display_name: profilesMap[item.user_name] || item.user_name.substring(0, 8)
+    })) : [];
+
+    const enrichedRequests = requestsData ? requestsData.map(req => ({
+      ...req,
+      display_name: profilesMap[req.user_name] || req.user_name.substring(0, 8)
+    })) : [];
+
+    setPendingItems(enrichedItems);
+    setPendingRequests(enrichedRequests);
     setLoading(false);
   };
 
@@ -50,20 +97,29 @@ export default function AdminPanel() {
     setLoading(false);
   };
 
-  // --- CLIENT-SIDE PIPELINES (Bypassing SQL RPC Cache Issues) ---
-  const handleApproveStandard = async (itemId) => {
+  // ⚡ THE FIX: Standard Approval with Notification Payload
+  const handleApproveStandard = async (item) => {
     try {
-      const { error } = await supabase.from('user_closet_items').update({ is_verified: true }).eq('id', itemId);
+      const { error } = await supabase.from('user_closet_items').update({ is_verified: true }).eq('id', item.id);
       if (error) throw new Error(error.message);
-      setPendingItems(prev => prev.filter(item => item.id !== itemId));
+
+      // ⚡ Dispatching the notification to the exact UUID
+      await supabase.from('notifications').insert([{
+        user_name: item.user_name, // This is the user's UUID
+        title: 'ASSET VERIFIED ✅',
+        message: `Your ${item.catalog_items?.brand || 'asset'} ${item.catalog_items?.name || ''} was verified by authentication and is now live in your closet.`,
+      }]);
+
+      setPendingItems(prev => prev.filter(i => i.id !== item.id));
     } catch (err) {
       alert("Approval Error: " + err.message);
     }
   };
 
-  const handleApproveExpansion = async (requestId, imageToUse) => {
+  // ⚡ THE FIX: Expansion Approval with Notification Payload
+  const handleApproveExpansion = async (req, imageToUse) => {
     try {
-      const { data: reqData, error: reqError } = await supabase.from('catalog_requests').select('*').eq('id', requestId).single();
+      const { data: reqData, error: reqError } = await supabase.from('catalog_requests').select('*').eq('id', req.id).single();
       if (reqError) throw new Error("Failed fetching request: " + reqError.message);
 
       const finalImage = imageToUse || 'https://via.placeholder.com/400x400/111113/facc15?text=NO+IMAGE';
@@ -77,7 +133,7 @@ export default function AdminPanel() {
       if (catError) throw new Error("Catalog creation failed: " + catError.message);
 
       const { error: closetError } = await supabase.from('user_closet_items').insert([{
-        user_name: reqData.user_name,
+        user_name: reqData.user_name, // This is the user's UUID
         catalog_item_id: newCatalogItem.id,
         size: reqData.size,
         condition_status: 'DS',
@@ -86,21 +142,44 @@ export default function AdminPanel() {
       }]);
       if (closetError) throw new Error("Closet insertion failed: " + closetError.message);
 
-      await supabase.from('catalog_requests').delete().eq('id', requestId);
-      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+      // ⚡ Dispatching the notification to the exact UUID
+      await supabase.from('notifications').insert([{
+        user_name: reqData.user_name, 
+        title: 'MARKET EXPANDED 🌍',
+        message: `Your catalog request for the ${reqData.proposed_brand} ${reqData.proposed_name} was approved! The asset is now verified in your closet.`,
+      }]);
+
+      await supabase.from('catalog_requests').delete().eq('id', req.id);
+      setPendingRequests(prev => prev.filter(r => r.id !== req.id));
     } catch (error) {
       alert("PIPELINE ERROR: " + error.message);
     }
   };
 
-  const handleRejectStandard = async (itemId) => {
-    await supabase.from('user_closet_items').delete().eq('id', itemId);
-    setPendingItems(prev => prev.filter(item => item.id !== itemId));
+  const handleRejectStandard = async (item) => {
+    await supabase.from('user_closet_items').delete().eq('id', item.id);
+    
+    // Optional: Sending a rejection notification
+    await supabase.from('notifications').insert([{
+      user_name: item.user_name, 
+      title: 'VERIFICATION FAILED ❌',
+      message: `Your asset verification for ${item.catalog_items?.brand} ${item.catalog_items?.name} was rejected. Please ensure images are clear and meet the protocol.`
+    }]);
+
+    setPendingItems(prev => prev.filter(i => i.id !== item.id));
   };
 
-  const handleRejectExpansion = async (requestId) => {
-    await supabase.from('catalog_requests').delete().eq('id', requestId);
-    setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+  const handleRejectExpansion = async (req) => {
+    await supabase.from('catalog_requests').delete().eq('id', req.id);
+
+    // Optional: Sending a rejection notification
+    await supabase.from('notifications').insert([{
+      user_name: req.user_name, 
+      title: 'REQUEST REJECTED ❌',
+      message: `Your catalog expansion request for ${req.proposed_brand} ${req.proposed_name} was rejected by the authentication team.`
+    }]);
+
+    setPendingRequests(prev => prev.filter(r => r.id !== req.id));
   };
 
   const handleDeleteFromCatalog = async (catalogId, itemName) => {
@@ -127,7 +206,7 @@ export default function AdminPanel() {
                   <div className="h-48 bg-white relative">
                     {coverImage ? <img src={coverImage} alt="Proof" className="w-full h-full object-contain p-2" /> : <div className="w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-xs font-mono uppercase tracking-widest">No Image</div>}
                     <div className="absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-[10px] font-black text-yellow-500 uppercase">New Asset</div>
-                    <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[10px] font-black text-white uppercase">{req.user_name}</div>
+                    <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[10px] font-black text-white uppercase">{req.display_name}</div>
                   </div>
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
@@ -136,8 +215,9 @@ export default function AdminPanel() {
                       <p className="text-gray-400 font-mono text-[10px] mt-1">Size: {req.size}</p>
                     </div>
                     <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
-                      <button onClick={() => handleApproveExpansion(req.id, coverImage)} className="flex-1 bg-yellow-500 text-black font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-yellow-400 transition-all">Establish</button>
-                      <button onClick={() => handleRejectExpansion(req.id)} className="flex-1 bg-red-900/20 text-red-500 font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-red-900/40 transition-all">Reject</button>
+                      {/* ⚡ Passed the full 'req' object instead of just req.id */}
+                      <button onClick={() => handleApproveExpansion(req, coverImage)} className="flex-1 bg-yellow-500 text-black font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-yellow-400 transition-all">Establish</button>
+                      <button onClick={() => handleRejectExpansion(req)} className="flex-1 bg-red-900/20 text-red-500 font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-red-900/40 transition-all">Reject</button>
                     </div>
                   </div>
                 </div>
@@ -159,7 +239,7 @@ export default function AdminPanel() {
               <div key={item.id} className="bg-[#111113] border border-white/10 rounded-xl overflow-hidden shadow-2xl flex flex-col">
                 <div className="h-48 bg-white relative">
                   <img src={item.proof_image_url} alt="Proof" className="w-full h-full object-contain p-2" />
-                  <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[10px] font-black text-white uppercase">{item.user_name}</div>
+                  <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-[10px] font-black text-white uppercase">{item.display_name}</div>
                 </div>
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div>
@@ -167,8 +247,9 @@ export default function AdminPanel() {
                     <h3 className="text-white font-bold text-sm truncate">{item.catalog_items?.name}</h3>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
-                    <button onClick={() => handleApproveStandard(item.id)} className="flex-1 bg-fi-accent text-black font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-white transition-all">Approve</button>
-                    <button onClick={() => handleRejectStandard(item.id)} className="flex-1 bg-red-900/20 text-red-500 font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-red-900/40 transition-all">Reject</button>
+                    {/* ⚡ Passed the full 'item' object instead of just item.id */}
+                    <button onClick={() => handleApproveStandard(item)} className="flex-1 bg-fi-accent text-black font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-white transition-all">Approve</button>
+                    <button onClick={() => handleRejectStandard(item)} className="flex-1 bg-red-900/20 text-red-500 font-black uppercase text-[10px] tracking-widest py-3 rounded-lg hover:bg-red-900/40 transition-all">Reject</button>
                   </div>
                 </div>
               </div>

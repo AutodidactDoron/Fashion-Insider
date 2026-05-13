@@ -5,41 +5,35 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  // --- THE INITIALIZATION & WEBSOCKET ENGINE ---
   useEffect(() => {
     let channel;
 
     const initBell = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.user_name) {
-        const username = user.user_metadata.user_name;
-        setCurrentUser(username);
+      
+      if (user) {
+        const userId = user.id; 
+        setCurrentUserId(userId);
         
-        fetchNotifications(username);
+        fetchNotifications(userId);
 
-        // 1. Channel Isolation: Creating a strictly unique channel ID
-        const uniqueChannelId = `alerts_${username.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const uniqueChannelId = `alerts_feed_${userId.substring(0, 8)}`;
         
         channel = supabase
           .channel(uniqueChannelId)
           .on('postgres_changes', { 
             event: 'INSERT', 
             schema: 'public', 
-            table: 'notifications', 
-            filter: `user_name=eq.${username}` 
+            table: 'notifications' 
           }, (payload) => {
-            // 2. Telemetry: Catching the raw drop from the server
-            console.log("🔥 [SYSTEM] REALTIME PAYLOAD RECEIVED:", payload);
-            setNotifications(prev => [payload.new, ...prev]);
-            setUnreadCount(prev => prev + 1);
+            if (payload.new.user_name === userId) {
+              setNotifications(prev => [payload.new, ...prev]);
+              setUnreadCount(prev => prev + 1);
+            }
           })
-          .subscribe((status, err) => {
-            // 3. Telemetry: Validating handshake with Supabase
-            console.log(`📡 [SYSTEM] WEBSOCKET STATUS: ${status}`);
-            if (err) console.error("WebSocket Error:", err);
-          });
+          .subscribe();
       }
     };
 
@@ -50,28 +44,19 @@ export default function NotificationBell() {
     };
   }, []);
 
-  // --- THE GLOBAL EVENT BUS LISTENER ---
-  // האזנה אקטיבית לפקודות ריענון שמגיעות מקומפוננטות אחרות (כמו ביצוע טרייד)
   useEffect(() => {
     const handleForceRefresh = () => {
-      if (currentUser) {
-        fetchNotifications(currentUser);
-      }
+      if (currentUserId) fetchNotifications(currentUserId);
     };
-
-    // מתחבר לאותו ערוץ שידור שיצרנו ב-MyTradesContent
     window.addEventListener('force_ts_refresh', handleForceRefresh);
-    
-    return () => {
-      window.removeEventListener('force_ts_refresh', handleForceRefresh);
-    };
-  }, [currentUser]);
+    return () => window.removeEventListener('force_ts_refresh', handleForceRefresh);
+  }, [currentUserId]);
 
-  const fetchNotifications = async (username) => {
+  const fetchNotifications = async (userId) => {
     const { data } = await supabase
       .from('notifications')
       .select('*')
-      .eq('user_name', username)
+      .eq('user_name', userId) 
       .order('created_at', { ascending: false })
       .limit(10);
       
@@ -81,19 +66,29 @@ export default function NotificationBell() {
     }
   };
 
-  const markAsRead = async () => {
-    if (unreadCount === 0 || !currentUser) return;
-    setUnreadCount(0);
-    await supabase.from('notifications').update({ is_read: true }).eq('user_name', currentUser);
+  // ⚡ THE FIX: Adjusted the read logic
+  const handleBellClick = async () => {
+    setIsOpen(!isOpen);
+    
+    // Only execute if there are actually unread messages
+    if (unreadCount > 0 && currentUserId) {
+      // 1. Clear the red badge immediately
+      setUnreadCount(0);
+      
+      // 2. Update the DB in the background
+      await supabase.from('notifications').update({ is_read: true }).eq('user_name', currentUserId);
+      
+      // NOTE: We deliberately DO NOT mutate the local `notifications` state here.
+      // This keeps the yellow highlight active while the user is reading the menu.
+    }
   };
 
-  // מוסתר אם אין יוזר עדיין
-  if (!currentUser) return null;
+  if (!currentUserId) return null;
 
   return (
     <div className="relative">
       <button 
-        onClick={() => { setIsOpen(!isOpen); markAsRead(); }}
+        onClick={handleBellClick}
         className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-colors relative"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
