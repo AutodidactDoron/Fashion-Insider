@@ -8,31 +8,56 @@ export default function CommunityContent() {
   const [isVaultOpen, setIsVaultOpen] = useState(false);
   const [attachedAssets, setAttachedAssets] = useState([]);
   const [feed, setFeed] = useState([]); 
+  const [recentExecutions, setRecentExecutions] = useState([]); 
   const [broadcastText, setBroadcastText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. Initial Load
   useEffect(() => {
     fetchFeed();
-    const channel = supabase
-      .channel('community_feed')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_posts' }, () => {
-        fetchFeed();
-      })
-      .subscribe();
+  }, []);
+
+  // ⚡ 2. THE GLOBAL ENGINE CONNECTION
+  useEffect(() => {
+    const handleForceRefresh = () => {
+      fetchFeed();
+    };
+
+    window.addEventListener('refresh_feed', handleForceRefresh);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.removeEventListener('refresh_feed', handleForceRefresh);
     };
   }, []);
 
   const fetchFeed = async () => {
-    const { data } = await supabase
+    setIsLoading(true);
+
+    // ⚡ 1. THE GARBAGE COLLECTOR: מנקה את הברזל מפוסטים מתים לפני המשיכה
+    await supabase.rpc('clean_zombie_posts');
+
+    // ⚡ 2. THE CLEAN FETCH: שואב את הפיד המעודכן
+    const { data: postsData, error } = await supabase
       .from('community_posts')
       .select('*')
       .order('bumped_at', { ascending: false })
       .limit(50);
     
-    if (data) setFeed(data);
+    if (error) {
+      console.error("Feed Fetch Error:", error);
+      setIsLoading(false);
+      return;
+    }
+
+    if (postsData) {
+      // ⚡ OMNI-CLEAN: אין יותר המרות UUID. הנתונים מגיעים נקיים מהברזל.
+      const enrichedFeed = postsData.map(post => ({
+        ...post,
+        display_name: post.user_name 
+      }));
+
+      setFeed(enrichedFeed);
+    }
     setIsLoading(false);
   };
 
@@ -49,21 +74,32 @@ export default function CommunityContent() {
 
     const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user || !user.user_metadata?.user_name) {
+    if (!user) {
       alert("Authentication error: Please log in to broadcast.");
       return;
     }
 
-    const liveUsername = user.user_metadata.user_name;
+    // ⚡ IDENTITY RESOLUTION: שאיבת השם המפורש מהפרופיל לפני ההזרקה
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_name')
+      .eq('id', user.id)
+      .single();
+
+    const explicitUserName = profile?.user_name || user.user_metadata?.user_name;
+
+    if (!explicitUserName) {
+      alert("System Alert: Identity resolution failed. Please refresh.");
+      return;
+    }
 
     const newPost = {
-      user_name: liveUsername,
+      user_name: explicitUserName, // <-- The Hard Fix: Injecting raw string
       is_pro: true,
       is_verified: true,
       type: 'WTS', 
       content: broadcastText,
       assets: attachedAssets
-      // bids_count הוסר לחלוטין מהלוגיקה החדשה
     };
 
     const { error } = await supabase.from('community_posts').insert([newPost]);
@@ -71,13 +107,14 @@ export default function CommunityContent() {
     if (!error) {
       setBroadcastText('');
       setAttachedAssets([]);
-      fetchFeed();
+    } else {
+      console.error("Broadcast Error:", error);
     }
   };
 
   return (
     <section id="community-section" className="pb-20">
-      <div className="flex flex-col xl:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
         
         {/* הפיד המרכזי */}
         <div className="flex-1 space-y-6 min-w-0">
@@ -141,14 +178,14 @@ export default function CommunityContent() {
               <div key={post.id} className="bg-[#111113] rounded-xl p-4 sm:p-6 border border-white/5 hover:border-white/10 transition-colors group">
                 <div className="flex gap-3 sm:gap-4">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center text-white font-bold text-base sm:text-lg shrink-0">
-                    {post.user_name ? post.user_name.charAt(0).toUpperCase() : 'U'}
+                    {post.display_name ? post.display_name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        <span className="font-bold text-white text-sm sm:text-base">{post.user_name}</span>
-                        <TrustBadge username={post.user_name} className="text-[9px] sm:text-[10px] bg-black/50 border border-white/5 px-2 py-0.5 rounded shadow-sm" />
+                        <span className="font-bold text-white text-sm sm:text-base">{post.display_name}</span>
+                        <TrustBadge username={post.display_name} className="text-[9px] sm:text-[10px] bg-black/50 border border-white/5 px-2 py-0.5 rounded shadow-sm" />
                         {post.is_pro && <span className="text-xs sm:text-sm" title="PRO Trader">👑</span>}
                         {post.is_verified && (
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 text-fi-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -181,7 +218,6 @@ export default function CommunityContent() {
                       </div>
                     )}
                     
-                    {/* הסרנו את בלוק ה-Bids, יישרנו את כפתור ה-Interested לימין המוחלט */}
                     <div className="flex items-center justify-end mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/5">
                       <InterestedAction postId={post.id} postOwnerName={post.user_name} />
                     </div>
@@ -193,10 +229,8 @@ export default function CommunityContent() {
         </div>
 
         {/* צד ימין - מודיעין שוק */}
-        <div className="w-full xl:w-80 shrink-0 space-y-6">
-          
-          {/* מנוע FOMO חדש: Recent Executions במקום Volume Watch */}
-          <div className="bg-[#111113] rounded-xl p-5 border border-white/10 relative overflow-hidden">
+        <div className="w-full lg:w-80 shrink-0 space-y-6">
+          <div className="bg-[#111113] rounded-xl p-5 border border-white/10 relative overflow-hidden sticky top-24">
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-3xl rounded-full" />
             <div className="flex items-center justify-between mb-5 relative z-10">
               <h3 className="font-bold text-white text-sm uppercase tracking-wider">Recent Executions</h3>
@@ -205,46 +239,30 @@ export default function CommunityContent() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
               </span>
             </div>
+            
             <div className="space-y-4 relative z-10">
-              {[
-                { item: "Jordan 1 'Chicago'", action: "Trade Locked", time: "2m ago" },
-                { item: "Yeezy 350 V2", action: "Sold for CR", time: "14m ago" },
-                { item: "Supreme Bogo", action: "Trade Locked", time: "1h ago" },
-              ].map((activity, i) => (
-                <div key={i} className="flex items-center justify-between group">
-                  <div className="min-w-0 pr-3">
-                    <span className="block text-sm font-semibold text-gray-300 group-hover:text-white transition-colors truncate">{activity.item}</span>
-                    <span className="text-[9px] text-gray-500 uppercase tracking-widest">{activity.time}</span>
-                  </div>
-                  <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded shrink-0 ${activity.action === 'Trade Locked' ? 'bg-blue-500/10 text-blue-400' : 'bg-green-500/10 text-green-400'}`}>
-                    {activity.action}
-                  </span>
+              {recentExecutions.length === 0 ? (
+                <div className="text-center py-6 border border-white/5 bg-black/30 rounded-lg">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Awaiting Liquidity</p>
+                  <p className="text-xs text-gray-400 mt-1">No recent trades verified yet.</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-[#111113] rounded-xl p-5 border border-white/10">
-            <h3 className="font-bold text-white text-sm uppercase tracking-wider mb-4">Top Traders</h3>
-            <div className="space-y-4">
-              {[
-                { name: 'SneakerKing', rank: '1', score: '99.8' },
-                { name: 'HypeTrader', rank: '2', score: '98.5' },
-                { name: 'VaultBoy', rank: '3', score: '95.2' },
-              ].map((whale, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-                  <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-gray-400 font-bold text-xs border border-white/5">
-                    #{whale.rank}
+              ) : (
+                recentExecutions.map((activity, i) => (
+                  <div key={i} className="flex items-center justify-between group border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                    <div className="min-w-0 pr-3">
+                      <span className="block text-sm font-bold text-gray-300 group-hover:text-white transition-colors truncate">{activity.item}</span>
+                      <span className="text-[9px] text-gray-500 uppercase tracking-widest">{activity.time}</span>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded shrink-0 ${activity.action === 'Trade Locked' ? 'bg-blue-500/10 text-blue-400' : 'bg-green-500/10 text-green-400'}`}>
+                      {activity.action}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-bold truncate">{whale.name}</div>
-                    <div className="text-gray-500 text-xs">Trust Score: <span className="text-fi-accent">{whale.score}%</span></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
+
       </div>
       
       <VaultSelectorModal 

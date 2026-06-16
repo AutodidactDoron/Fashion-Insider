@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import TopUpModal from './TopUpModal'; 
-import CreateTradeModal from './CreateTradeModal';
 import NotificationBell from './NotificationBell';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -17,12 +16,10 @@ export default function TopBar({ toggleSidebar }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-  const [isTradeOpen, setIsTradeOpen] = useState(false);
 
   const searchInputRef = useRef(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   
-  // ⚡ Terminal Memory: Initialize with last saved search
   const [searchQuery, setSearchQuery] = useState(() => {
     return localStorage.getItem('fi_last_market_search') || '';
   });
@@ -31,11 +28,14 @@ export default function TopBar({ toggleSidebar }) {
   const [selectedShoe, setSelectedShoe] = useState(null);
   const [chartData, setChartData] = useState([]);
 
-  // ⚡ Sync search query to browser memory in real-time
+  const [liveCredits, setLiveCredits] = useState(0);
+  const [userEscrowCredits, setUserEscrowCredits] = useState(0);
+
   useEffect(() => {
     localStorage.setItem('fi_last_market_search', searchQuery);
   }, [searchQuery]);
 
+  // ⚡ מנוע סנכרון קטלוג - Initial Fetch + Realtime WebSockets
   useEffect(() => {
     const fetchCatalog = async () => {
       const { data, error } = await supabase
@@ -55,15 +55,48 @@ export default function TopBar({ toggleSidebar }) {
         setCatalogItems(formattedData);
       }
     };
+    
     fetchCatalog();
+
+    // פתיחת ערוץ האזנה שקוף לתוספות חדשות לקטלוג (ESTABLISH)
+    const catalogSubscription = supabase
+      .channel('global_market_index')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'catalog_items' },
+        (payload) => {
+          const newItem = payload.new;
+          // עיבוד המידע למבנה המקומי והזרקתו לזיכרון של החיפוש
+          const formattedItem = {
+            id: newItem.id,
+            name: newItem.name,
+            brand: newItem.brand,
+            rawMin: newItem.min_range,
+            rawMax: newItem.max_range,
+            rawMarketValue: newItem.market_value,
+            img: newItem.stock_image_url
+          };
+          setCatalogItems(prev => [...prev, formattedItem]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(catalogSubscription);
+    };
   }, []);
 
+  // ⚡ אלגוריתם חיפוש חכם (Case-Insensitive & Multi-Field)
   const searchResults = useMemo(() => {
     if (searchQuery.trim() === '') return [];
-    return catalogItems.filter(item => 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      item.brand.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5);
+    const query = searchQuery.toLowerCase();
+    
+    return catalogItems.filter(item => {
+      // חיפוש גמיש גם בשם הדגם וגם בשם המותג
+      const nameMatch = item.name ? item.name.toLowerCase().includes(query) : false;
+      const brandMatch = item.brand ? item.brand.toLowerCase().includes(query) : false;
+      return nameMatch || brandMatch;
+    }).slice(0, 5); // הגבלת תוצאות לביצועים
   }, [catalogItems, searchQuery]);
 
   useEffect(() => {
@@ -91,16 +124,35 @@ export default function TopBar({ toggleSidebar }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const fetchUserWallet = async (userId) => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('credits, escrow_credits')
+      .eq('id', userId)
+      .single();
+    
+    if (data) {
+      setLiveCredits(data.credits || 0);
+      setUserEscrowCredits(data.escrow_credits || 0);
+    }
+  };
+
   function syncSession() {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchUserWallet(currentUser.id);
+      }
     });
   }
 
   useEffect(() => {
     syncSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) fetchUserWallet(currentUser.id);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -108,6 +160,14 @@ export default function TopBar({ toggleSidebar }) {
   useEffect(() => {
     syncSession();
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleCreditUpdate = () => {
+      if (user) fetchUserWallet(user.id);
+    };
+    window.addEventListener('update_global_credits', handleCreditUpdate);
+    return () => window.removeEventListener('update_global_credits', handleCreditUpdate);
+  }, [user]);
 
   function handleLogout() {
     supabase.auth.signOut();
@@ -117,10 +177,8 @@ export default function TopBar({ toggleSidebar }) {
   const handleResultClick = (item) => {
     setSelectedShoe({ ...item, condition: 'DS' });
     setIsSearchFocused(false);
-    // ⚡ Removed: setSearchQuery('') - We intentionally keep the text
   };
 
-  // ⚡ Smart Focus: Auto-selects text for easy overwrite
   const handleSearchFocus = (e) => {
     setIsSearchFocused(true);
     e.target.select();
@@ -152,7 +210,7 @@ export default function TopBar({ toggleSidebar }) {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={handleSearchFocus} // ⚡ Attached Smart Focus
+                onFocus={handleSearchFocus}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 placeholder="Search globally (Press '/' to focus)..." 
                 className="w-full bg-[#111113] border border-white/10 focus:border-fi-accent rounded-lg pl-8 sm:pl-10 pr-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 outline-none transition-all shadow-inner relative z-0"
@@ -199,13 +257,6 @@ export default function TopBar({ toggleSidebar }) {
             UPGRADE TO PRO
           </button>
           
-          <button 
-            onClick={() => setIsTradeOpen(true)} 
-            className="hidden md:inline-flex px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white font-bold text-[10px] hover:bg-white hover:text-black transition-all items-center whitespace-nowrap uppercase tracking-wider shrink-0"
-          >
-            LIST ITEM
-          </button>
-
           <NotificationBell currentUser={user?.user_metadata?.user_name || "DemoUser"} />
           
           {user ? (
@@ -225,8 +276,22 @@ export default function TopBar({ toggleSidebar }) {
             </div>
           )}
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <span className="hidden lg:block text-white font-black text-sm tracking-wide whitespace-nowrap">5,450 CR</span>
+          <div className="flex items-center gap-4 border-l border-white/10 pl-4 shrink-0">
+            <div className="hidden lg:flex flex-col items-end">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-white font-mono font-black text-sm tracking-wide whitespace-nowrap">
+                  {liveCredits.toLocaleString()} CR
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">In Escrow:</span>
+                <span className="text-amber-400 font-mono font-bold text-[11px]">
+                  {userEscrowCredits.toLocaleString()} C
+                </span>
+              </div>
+            </div>
+
             <button 
               onClick={() => setIsTopUpOpen(true)}
               className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-green-500 text-black text-[10px] font-black hover:bg-green-400 transition-colors whitespace-nowrap uppercase tracking-widest shadow-[0_0_10px_rgba(34,197,94,0.3)] shrink-0"
@@ -238,7 +303,6 @@ export default function TopBar({ toggleSidebar }) {
       </header>
 
       <TopUpModal isOpen={isTopUpOpen} onClose={() => setIsTopUpOpen(false)} />
-      <CreateTradeModal isOpen={isTradeOpen} onClose={() => setIsTradeOpen(false)} />
 
       {selectedShoe && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">

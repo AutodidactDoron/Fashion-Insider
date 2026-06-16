@@ -12,7 +12,6 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
       if (!isOpen) return;
       setLoading(true);
       
-      // 1. זיהוי קריפטוגרפי של המשתמש הנוכחי
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -20,12 +19,27 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
         return;
       }
 
-      // 2. הזרקת פילטר אבטחה: שולפים רק מהארון האישי, ורק נכסים מאומתים
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('user_name')
+        .eq('id', user.id)
+        .single();
+
+      const actualName = profile?.user_name;
+      
+      if (!actualName) {
+        console.error("Vault Modal: Identity resolution failed");
+        setLoading(false);
+        return;
+      }
+
+      // ⚡ THE ENRICHED FETCH: שואב גם size, condition_status ו-market_value מהקטלוג
       const { data, error } = await supabase
         .from('user_closet_items')
-        .select(`id, is_verified, catalog_items (name, brand, stock_image_url)`)
-        .eq('user_name', user.id)
-        .eq('is_verified', true);
+        .select(`id, is_verified, is_locked, size, condition_status, catalog_items (name, brand, stock_image_url, market_value)`)
+        .ilike('user_name', actualName) 
+        .eq('is_verified', true)
+        .is('is_locked', false);
 
       if (error) {
         console.error("Error fetching vault for modal:", error);
@@ -34,12 +48,15 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
       }
 
       if (data) {
-        // 3. שיטוח (Flattening) של מבנה הנתונים כדי שיתאים ל-UI ולפוסטים
         const formattedItems = data.map(item => ({
-          id: item.id, // ⚡ קריטי: זהו ה-ID הספציפי של הנעל בארון, לא של הקטלוג
+          id: item.id, 
           name: item.catalog_items?.name || 'Unknown',
           brand: item.catalog_items?.brand || 'N/A',
-          stock_image_url: item.catalog_items?.stock_image_url
+          stock_image_url: item.catalog_items?.stock_image_url,
+          // ⚡ THE PAYLOAD INJECTION: אריזת הנתונים לתוך ה-JSON של העסקה
+          size: item.size || 'N/A',
+          condition: item.condition_status || 'N/A',
+          marketValue: item.catalog_items?.market_value || 0
         }));
         setVaultItems(formattedItems);
       }
@@ -81,7 +98,6 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
     <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
       <div className="bg-[#111113] border border-white/10 rounded-3xl w-full max-w-xl max-h-[85vh] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col">
         
-        {/* Header */}
         <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01] shrink-0">
           <div>
             <h2 className="text-xl !font-black text-white uppercase tracking-tighter">Select Assets</h2>
@@ -92,12 +108,11 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
           </button>
         </div>
 
-        {/* Search & List */}
         <div className="p-8 flex-1 flex flex-col min-h-0">
           <div className="relative mb-6 shrink-0">
             <input 
               type="text" 
-              placeholder="Search your authenticated items..." 
+              placeholder="Search your liquid assets..." 
               className="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-white font-medium focus:outline-none focus:border-fi-accent/50 transition-all placeholder:text-gray-700"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -109,8 +124,8 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
               <div className="flex justify-center p-8"><div className="animate-spin w-6 h-6 border-2 border-fi-accent border-t-transparent rounded-full"></div></div>
             ) : vaultItems.length === 0 ? (
               <div className="text-center p-8 border border-white/5 rounded-xl bg-white/[0.02]">
-                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Your closet is empty</p>
-                <p className="text-gray-600 text-[10px] uppercase mt-2">Only verified items can be traded.</p>
+                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">No liquid assets available</p>
+                <p className="text-gray-600 text-[10px] uppercase mt-2">Items currently in Escrow cannot be traded.</p>
               </div>
             ) : (
               filteredItems.map(item => {
@@ -147,7 +162,6 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
           </div>
         </div>
 
-        {/* Footer Action */}
         <div className="p-8 pt-4 border-t border-white/5 shrink-0">
           <button 
             disabled={selectedItems.length === 0}
@@ -157,7 +171,6 @@ export default function VaultSelectorModal({ isOpen, onClose, onAssetsSelected, 
             {selectedItems.length > 0 ? `ATTACH ${selectedItems.length} ASSET${selectedItems.length > 1 ? 'S' : ''}` : 'SELECT ASSETS'}
           </button>
         </div>
-
       </div>
     </div>
   );

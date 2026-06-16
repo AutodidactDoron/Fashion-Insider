@@ -1,30 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // המנוע הקריטי שחסר לקפיצת העמוד
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import { supabase } from '../supabaseClient';
 
-export default function MyPostsContent() {
-  const navigate = useNavigate(); // אתחול מנוע הניווט
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// ⚡ THE LOGIC ENGINE: Shared Trust Tier Architecture
+function getTrustTier(score) {
+  if (score < 20) return { label: 'GHOST', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' };
+  if (score < 50) return { label: 'ROOKIE', color: 'text-gray-400', bg: 'bg-white/5', border: 'border-white/10' };
+  if (score < 80) return { label: 'VERIFIED', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' };
+  if (score < 95) return { label: 'PRO', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' };
+  return { label: 'APEX', color: 'text-black', bg: 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400', border: 'border-yellow-400/50' };
+}
+
+export default function MyPostsContent() {
+  const navigate = useNavigate(); 
   const [myPosts, setMyPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // State לניהול עריכה בזמן אמת
   const [editingPostId, setEditingPostId] = useState(null);
   const [editContent, setEditContent] = useState('');
-
-  // State לניהול ההצעות
   const [interests, setInterests] = useState({});
+  const [currentUser, setCurrentUser] = useState({ id: null, name: null });
 
-  // הליבה הדינמית
-  const [currentUser, setCurrentUser] = useState(null);
+  const openPanelsRef = useRef(new Set());
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     const initPage = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.user_metadata?.user_name) {
-        const username = user.user_metadata.user_name;
-        setCurrentUser(username);
-        fetchMyPosts(username); 
+      if (user) {
+        // ⚡ שליפת השם האמיתי מהברזל 
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('user_name')
+          .eq('id', user.id)
+          .single();
+
+        const explicitName = profile?.user_name || user.user_metadata?.user_name;
+        setCurrentUser({ id: user.id, name: explicitName });
+        
+        // עכשיו שהטבלאות נקיות, אנחנו שולפים את הפוסטים לפי השם החשוף
+        fetchMyPosts(explicitName || user.id); 
       } else {
         setIsLoading(false); 
       }
@@ -32,12 +48,27 @@ export default function MyPostsContent() {
     initPage();
   }, []);
 
-  const fetchMyPosts = async (username) => {
+  useEffect(() => {
+    const triggerRefresh = () => setRefreshTick(t => t + 1);
+    window.addEventListener('refresh_offers', triggerRefresh);
+    return () => window.removeEventListener('refresh_offers', triggerRefresh);
+  }, []);
+
+  useEffect(() => {
+    if (refreshTick > 0) {
+      openPanelsRef.current.forEach(postId => {
+        fetchOffersForPost(postId);
+      });
+    }
+  }, [refreshTick]);
+
+  const fetchMyPosts = async (userIdentifier) => {
     setIsLoading(true);
+    // Omni-Catcher גיבוי למקרה שיש פוסטים היסטוריים עם UUID או שמות
     const { data, error } = await supabase
       .from('community_posts')
       .select('*')
-      .eq('user_name', username) 
+      .or(`user_name.eq.${userIdentifier},user_name.eq.${currentUser.id}`)
       .order('created_at', { ascending: false });
 
     if (data) setMyPosts(data);
@@ -45,24 +76,85 @@ export default function MyPostsContent() {
     setIsLoading(false);
   };
 
-  const handleToggleInterests = async (postId) => {
-    if (interests[postId]) {
-      setInterests(prev => {
-        const newState = { ...prev };
-        delete newState[postId];
-        return newState;
-      });
-      return;
-    }
-
-    const { data, error } = await supabase
+  const fetchOffersForPost = async (postId) => {
+    const { data: interestsData, error } = await supabase
       .from('post_interests')
       .select('*')
       .eq('post_id', postId)
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setInterests(prev => ({ ...prev, [postId]: data }));
+    if (error || !interestsData) return;
+
+    // מכיוון שכבר ניקינו את טבלת ההצעות מ-UUIDs בקובץ הקודם, רוב השמות שיגיעו פה יהיו טקסט.
+    // הלוגיקה הזו נשארת רק כרשת ביטחון לפרופילים שיש להם Trust Score.
+    const potentialUUIDs = new Set();
+    const potentialNames = new Set();
+    
+    interestsData.forEach(offer => {
+      if (UUID_REGEX.test(offer.sender_name)) potentialUUIDs.add(offer.sender_name);
+      else potentialNames.add(offer.sender_name);
+    });
+
+    const profilesMap = {};
+
+    if (potentialUUIDs.size > 0 || potentialNames.size > 0) {
+      // אנחנו מושכים נתוני פרופיל ו-Trust Score גם לפי מזהים וגם לפי שמות פשוטים
+      let query = supabase.from('user_profiles').select('id, user_name, trust_score');
+      if (potentialUUIDs.size > 0) query = query.in('id', Array.from(potentialUUIDs));
+      // fallback if only names are used
+      
+      const { data: profilesData } = await query;
+
+      if (profilesData) {
+        profilesData.forEach(p => {
+          profilesMap[p.id] = { name: p.user_name, ts: p.trust_score || 0 };
+          profilesMap[p.user_name] = { name: p.user_name, ts: p.trust_score || 0 }; // מיפוי כפול
+        });
+      }
+    }
+
+    const enrichedInterests = interestsData.map(offer => {
+      let parsedMessage = offer.message;
+      let attachedAssets = [];
+
+      if (offer.message && offer.message.startsWith('__PRO_OFFER__:')) {
+        try {
+          const jsonStr = offer.message.replace('__PRO_OFFER__:', '');
+          const payload = JSON.parse(jsonStr);
+          parsedMessage = payload.text;
+          attachedAssets = payload.assets || [];
+        } catch (e) {
+          console.error("Failed parsing structured offer payload", e);
+        }
+      }
+
+      const profileData = profilesMap[offer.sender_name];
+      const display_name = profileData ? profileData.name : (UUID_REGEX.test(offer.sender_name) ? offer.sender_name.substring(0, 8) : offer.sender_name);
+      const trustScore = profileData ? profileData.ts : 0;
+
+      return {
+        ...offer,
+        display_name,
+        trustScore,
+        parsedMessage,
+        attachedAssets
+      };
+    });
+
+    setInterests(prev => ({ ...prev, [postId]: enrichedInterests }));
+  };
+
+  const handleToggleInterests = async (postId) => {
+    if (openPanelsRef.current.has(postId)) {
+      openPanelsRef.current.delete(postId);
+      setInterests(prev => {
+        const next = { ...prev };
+        delete next[postId];
+        return next;
+      });
+    } else {
+      openPanelsRef.current.add(postId);
+      await fetchOffersForPost(postId);
     }
   };
 
@@ -92,18 +184,17 @@ export default function MyPostsContent() {
     }
   };
 
-  // --- TRADE ROOM INITIALIZATION (מנוע יצירת חדר המסחר ששודרג) ---
-  const handleInviteToTrade = async (postId, responderName) => {
-    if (!currentUser) return alert("You must be logged in.");
+  // ⚡ THE FIX: Identity Protocol for Trade Creation
+  const handleInviteToTrade = async (postId, responderName, responderId) => {
+    if (!currentUser.name) return alert("System Identity Check Failed. Please refresh.");
 
     try {
-      // 1. יצירת החדר ב-Database
       const { data: roomData, error: roomError } = await supabase
         .from('trade_rooms')
         .insert([{
           post_id: postId,
-          initiator_name: currentUser,
-          responder_name: responderName,
+          initiator_name: currentUser.name, // <-- הזרקה של השם האמיתי שלך (למשל Doron)
+          responder_name: responderName,   // <-- הזרקה של השם האמיתי של המציע (למשל Ceo_Test)
           status: 'pending_acceptance'
         }])
         .select()
@@ -115,21 +206,18 @@ export default function MyPostsContent() {
         return;
       }
 
-      // 2. עדכון סטטוס ההצעה
       await supabase
         .from('post_interests')
         .update({ status: 'accepted' })
         .eq('post_id', postId)
-        .eq('sender_name', responderName);
+        .eq('sender_name', responderId);
 
-      // 3. ירי ההתראה לצד השני
       await supabase.from('notifications').insert([{
-        user_name: responderName,
+        user_name: responderName, // הזרקה למערכת ההתראות תעבוד אם היא מכויילת ל-user_name טקסטואלי
         title: 'TRADE INVITATION 🤝',
-        message: `${currentUser} invited you to a private trade room. Go to My Trades to enter.`
+        message: `You were invited to a private trade room. Go to My Trades to enter.`
       }]);
 
-      // 4. קפיצה פיזית לעמוד הטריידים החדש שלך
       navigate('/trades'); 
       
     } catch (err) {
@@ -226,44 +314,74 @@ export default function MyPostsContent() {
                 </button>
               </div>
 
-              {/* INCOMING OFFERS SECTION */}
               <div className="mt-6 border-t border-white/5 pt-4">
                 <button 
                   onClick={() => handleToggleInterests(post.id)}
                   className="text-[10px] font-black text-fi-accent uppercase tracking-widest hover:underline flex items-center gap-1.5"
                 >
-                  {interests[post.id] ? 'Hide Offers' : 'View Incoming Offers'}
+                  {openPanelsRef.current.has(post.id) ? 'Hide Offers' : 'View Incoming Offers'}
                 </button>
 
-                {interests[post.id] && (
+                {openPanelsRef.current.has(post.id) && interests[post.id] && (
                   <div className="mt-4 space-y-3 animate-in slide-in-from-top-2 duration-300">
                     {interests[post.id].length === 0 ? (
                       <p className="text-gray-500 text-xs italic">No offers received yet.</p>
                     ) : (
-                      interests[post.id].map(offer => (
-                        <div key={offer.id} className="bg-white/[0.02] border border-white/5 rounded-lg p-4 flex justify-between items-center group hover:border-white/10 transition-colors">
-                          <div>
-                            <p className="text-white font-bold text-xs flex items-center gap-2">
-                              {offer.sender_name}
-                              <span className="bg-white/10 text-gray-400 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">Offer</span>
-                            </p>
-                            <p className="text-gray-400 text-[11px] mt-1.5">{offer.message || "No specific message provided."}</p>
+                      interests[post.id].map(offer => {
+                        const tier = getTrustTier(offer.trustScore);
+
+                        return (
+                          <div key={offer.id} className="bg-black/50 border border-white/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-fi-accent/30 transition-all duration-300 shadow-md">
+                            <div className="flex items-start gap-4 min-w-0">
+                              
+                              {offer.attachedAssets && offer.attachedAssets.length > 0 && (
+                                <div className="w-16 h-12 rounded bg-white/5 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                                  <img 
+                                    src={offer.attachedAssets[0].stock_image_url} 
+                                    alt="" 
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                </div>
+                              )}
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="text-white font-black text-sm truncate max-w-[120px]">{offer.display_name}</span>
+                                  
+                                  <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded border ${tier.bg} ${tier.border}`}>
+                                    <span className={`text-[8px] font-black tracking-widest uppercase ${tier.color} ${tier.label === 'APEX' ? 'animate-pro-shine' : ''}`}>
+                                      {tier.label}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-white/80 border-l border-white/10 pl-1.5">
+                                      {offer.trustScore}<span className="text-[7px] ml-0.5 opacity-50">TS</span>
+                                    </span>
+                                  </div>
+
+                                  <span className="bg-fi-accent/10 border border-fi-accent/20 text-fi-accent text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider hidden sm:inline-block">
+                                    Open
+                                  </span>
+                                </div>
+                                <p className="text-gray-200 text-xs font-semibold leading-relaxed max-w-xl break-words">
+                                  {offer.parsedMessage || "No specific message provided."}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 shrink-0 justify-end">
+                              <button 
+                                onClick={() => handleInviteToTrade(post.id, offer.display_name, offer.sender_name)}
+                                className="px-4 py-2.5 bg-fi-accent text-black font-black text-[10px] rounded uppercase hover:bg-yellow-500 transition-colors shadow-lg"
+                              >
+                                Invite
+                              </button>
+                              <button className="px-4 py-2.5 bg-white/5 text-gray-400 font-bold text-[10px] rounded uppercase hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                                Decline
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            {/* --- הכפתור הקריטי המעודכן --- */}
-                            <button 
-                              onClick={() => handleInviteToTrade(post.id, offer.sender_name)}
-                              className="px-4 py-2 bg-fi-accent text-black font-bold text-[10px] rounded uppercase hover:bg-yellow-500 transition-colors shadow-lg"
-                            >
-                              Invite to Trade
-                            </button>
-                            {/* ----------------------------- */}
-                            <button className="px-4 py-2 bg-white/5 text-gray-400 font-bold text-[10px] rounded uppercase hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                              Decline
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}

@@ -15,7 +15,6 @@ export default function DashboardContent() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [catalogItems, setCatalogItems] = useState([]);
-  // ⚡ זיכרון מקומי ששומר את המצב הנבחר לכל נעל במסך
   const [itemConditions, setItemConditions] = useState({});
 
   useEffect(() => {
@@ -31,7 +30,6 @@ export default function DashboardContent() {
       }
 
       if (data) {
-        // אנחנו שומרים את המספרים הגולמיים כדי שנוכל להכפיל אותם מתמטית
         const formattedData = data.map(item => ({
           id: item.id,
           name: item.name,
@@ -45,18 +43,23 @@ export default function DashboardContent() {
       }
     };
 
+    // 1. משיכה ראשונית
     fetchCatalog();
+
+    // 2. חיבור למנוע הגלובלי - רענון אוטומטי בעת שינוי קטלוג
+    window.addEventListener('refresh_catalog', fetchCatalog);
+
+    // 3. ניקוי זיכרון
+    return () => window.removeEventListener('refresh_catalog', fetchCatalog);
   }, []);
 
-  // ⚡ Chart Generator Engine - מגיב למצב הנעל (Condition) שנבחר
+  // ⚡ Chart Generator Engine
   useEffect(() => {
     if (selectedShoe) {
       const generateRealisticData = () => {
-        // מזהים את מחיר הבסיס לפי הנעל והמכפיל (Multiplier)
         let basePrice = selectedShoe.rawMarketValue * CONDITION_MULTIPLIERS[selectedShoe.condition];
         
         return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map(month => {
-          // מייצרים תנודתיות שוק סביב מחיר הבסיס החתוך
           basePrice = basePrice * (1 + (Math.random() * 0.15 - 0.075));
           return { date: month, price: Math.round(basePrice) };
         });
@@ -72,9 +75,8 @@ export default function DashboardContent() {
     );
   }, [catalogItems, searchQuery]);
 
-  // פונקציה לעדכון מצב נעל ספציפית מבלי להיכנס לפוסט
   const handleConditionChange = (e, shoeId, condition) => {
-    e.stopPropagation(); // מונע פתיחה של הגרף בעת לחיצה על הכפתור הקטן
+    e.stopPropagation(); 
     setItemConditions(prev => ({ ...prev, [shoeId]: condition }));
   };
 
@@ -109,7 +111,6 @@ export default function DashboardContent() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {filteredShoes.map((shoe) => {
-              // ⚡ הלוגיקה החיה של הקלף: שולפים את המצב, המכפיל, והמחירים המעודכנים
               const currentCond = itemConditions[shoe.id] || 'DS';
               const multiplier = CONDITION_MULTIPLIERS[currentCond];
               const displayMarketValue = Math.round(shoe.rawMarketValue * multiplier);
@@ -138,7 +139,6 @@ export default function DashboardContent() {
                       onError={(e) => { e.currentTarget.src = 'https://placehold.co/400x300/111113/333?text=Asset+Pending'; }}
                     />
                     
-                    {/* ⚡ The Interactive Condition Selectors */}
                     <div className="absolute top-3 left-3 flex items-center gap-1 z-20">
                       {Object.keys(CONDITION_MULTIPLIERS).map(cond => (
                         <button
@@ -164,7 +164,6 @@ export default function DashboardContent() {
                     <div className="mt-4 pt-4 border-t border-white/5 flex items-end justify-between">
                       <div>
                         <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Est. Value</div>
-                        {/* ⚡ Live Updated Value */}
                         <div className="text-white text-base font-bold animate-in fade-in slide-in-from-bottom-1 duration-300" key={displayMarketValue}>
                           {displayMarketValue.toLocaleString()} CR
                         </div>
@@ -184,7 +183,6 @@ export default function DashboardContent() {
         )}
       </div>
 
-      {/* Popup Modal: Market Data */}
       {selectedShoe && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#111113] border border-white/10 rounded-xl p-6 w-full max-w-2xl relative shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
@@ -194,7 +192,6 @@ export default function DashboardContent() {
             
             <div className="flex items-center gap-3 mb-1 pr-8">
               <h2 className="text-xl font-bold text-white">{selectedShoe.name}</h2>
-              {/* מציג את מצב הנעל גם במודל */}
               <span className="px-2 py-0.5 rounded bg-fi-accent/10 border border-fi-accent/30 text-fi-accent text-[10px] font-black uppercase tracking-widest">
                 {selectedShoe.condition}
               </span>

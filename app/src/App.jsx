@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -11,6 +12,9 @@ import MyTradesContent from './components/MyTradesContent';
 import AdminPanel from './components/AdminPanel';
 import AdminRoute from './components/AdminRoute'; 
 
+// ⚡ הייבוא החסר: קוראים למנוע ה-V2 מהקובץ הנפרד שיצרת
+import GlobalRealtimeEngine from './components/GlobalRealtimeEngine';
+
 function ComingSoonPage({ title }) {
   return (
     <div className="bg-[#111113] rounded-xl p-6 border border-white/10">
@@ -23,6 +27,13 @@ function ComingSoonPage({ title }) {
 export default function App() {
   return (
     <BrowserRouter>
+      {/* ⚡ V2 Master Engine 
+        כאן המנוע מוזרק לשורש המערכת. 
+        שיים לב שבעתיד נצטרך להעביר לו את ה-currentUserId, 
+        אבל המנוע בנוי לא לקרוס גם אם הוא ריק כרגע.
+      */}
+      <GlobalRealtimeEngine currentUserId={null} />
+      
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

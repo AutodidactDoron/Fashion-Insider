@@ -1,62 +1,96 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
+
+function timeAgo(dateString) {
+  if (!dateString) return '';
+  const now = new Date();
+  const past = new Date(dateString);
+  const diffMs = now - past;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'JUST NOW';
+  if (diffMins < 60) return `${diffMins}M AGO`;
+  
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}H AGO`;
+  
+  return `${Math.floor(diffHrs / 24)}D AGO`;
+}
 
 export default function NotificationBell() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUsername, setCurrentUsername] = useState(null); 
 
   useEffect(() => {
-    let channel;
-
     const initBell = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (user) {
-        const userId = user.id; 
-        setCurrentUserId(userId);
-        
-        fetchNotifications(userId);
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('user_name')
+          .eq('id', user.id)
+          .single();
 
-        const uniqueChannelId = `alerts_feed_${userId.substring(0, 8)}`;
-        
-        channel = supabase
-          .channel(uniqueChannelId)
-          .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'notifications' 
-          }, (payload) => {
-            if (payload.new.user_name === userId) {
-              setNotifications(prev => [payload.new, ...prev]);
-              setUnreadCount(prev => prev + 1);
-            }
-          })
-          .subscribe();
+        if (profile && profile.user_name) {
+          const actualName = profile.user_name;
+          setCurrentUsername(actualName);
+          fetchNotifications(actualName);
+        }
       }
     };
-
     initBell();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
   }, []);
 
+  // ⚡ THE LIVE WIRE: WebSocket Engine with Telemetry
   useEffect(() => {
-    const handleForceRefresh = () => {
-      if (currentUserId) fetchNotifications(currentUserId);
-    };
-    window.addEventListener('force_ts_refresh', handleForceRefresh);
-    return () => window.removeEventListener('force_ts_refresh', handleForceRefresh);
-  }, [currentUserId]);
+    if (!currentUsername) return;
+    
+    console.log(`[BELL ENGINE] 📡 Initiating Realtime connection for: ${currentUsername}`);
 
-  const fetchNotifications = async (userId) => {
-    const { data } = await supabase
+    const channel = supabase
+      .channel('system-radar')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          console.log("[BELL ENGINE] 🔥 RAW REALTIME HIT:", payload);
+          
+          const targetUser = payload.new.user_name || "";
+          
+          if (targetUser.trim().toLowerCase() === currentUsername.trim().toLowerCase()) {
+            console.log("[BELL ENGINE] ✅ Target Match! Ringing the bell.");
+            setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+            setUnreadCount(prev => prev + 1);
+          } else {
+            console.log(`[BELL ENGINE] ❌ Mismatch. Target in DB: '${targetUser}', Current User: '${currentUsername}'`);
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log("[BELL ENGINE] 🔌 Connection Status:", status);
+        if (err) console.error("[BELL ENGINE] ⚠️ Connection Error:", err);
+      });
+
+    const handleForceRefresh = () => fetchNotifications(currentUsername);
+    window.addEventListener('refresh_notifications', handleForceRefresh);
+    window.addEventListener('force_ts_refresh', handleForceRefresh); 
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('refresh_notifications', handleForceRefresh);
+      window.removeEventListener('force_ts_refresh', handleForceRefresh);
+    };
+  }, [currentUsername]);
+
+  const fetchNotifications = async (username) => {
+    const { data, error } = await supabase
       .from('notifications')
       .select('*')
-      .eq('user_name', userId) 
+      .ilike('user_name', username) 
       .order('created_at', { ascending: false })
       .limit(10);
       
@@ -66,24 +100,39 @@ export default function NotificationBell() {
     }
   };
 
-  // ⚡ THE FIX: Adjusted the read logic
   const handleBellClick = async () => {
     setIsOpen(!isOpen);
-    
-    // Only execute if there are actually unread messages
-    if (unreadCount > 0 && currentUserId) {
-      // 1. Clear the red badge immediately
+    if (unreadCount > 0 && currentUsername) {
       setUnreadCount(0);
-      
-      // 2. Update the DB in the background
-      await supabase.from('notifications').update({ is_read: true }).eq('user_name', currentUserId);
-      
-      // NOTE: We deliberately DO NOT mutate the local `notifications` state here.
-      // This keeps the yellow highlight active while the user is reading the menu.
+      await supabase.from('notifications').update({ is_read: true }).ilike('user_name', currentUsername);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   };
 
-  if (!currentUserId) return null;
+  // ⚡ THE SMART ROUTER
+  const handleNotificationAction = (title) => {
+    setIsOpen(false); 
+    const upperTitle = title.toUpperCase();
+    
+    // ניתוב נכסים לארון
+    if (upperTitle.includes('VERIFIED') || upperTitle.includes('EXPANDED') || upperTitle.includes('FAILED') || upperTitle.includes('CONFISCATED')) {
+      navigate('/closet');
+    } 
+    // ניתוב טריידים לחדרי העסקאות
+    else if (upperTitle.includes('TRADE')) {
+      navigate('/trades');
+    } 
+    // ניתוב הצעות ללוח המודעות
+    else if (upperTitle.includes('OFFER')) {
+      navigate('/my-posts');
+    } 
+    // ברירת מחדל
+    else {
+      navigate('/dashboard'); 
+    }
+  };
+
+  if (!currentUsername) return null;
 
   return (
     <div className="relative">
@@ -109,8 +158,17 @@ export default function NotificationBell() {
               <div className="p-6 text-center text-gray-500 text-sm">No new alerts</div>
             ) : (
               notifications.map(notif => (
-                <div key={notif.id} className={`p-4 border-b border-white/5 transition-colors ${notif.is_read ? 'opacity-50' : 'bg-fi-accent/5 border-l-2 border-l-fi-accent'}`}>
-                  <h4 className="text-white font-bold text-xs mb-1">{notif.title}</h4>
+                <div 
+                  key={notif.id} 
+                  onClick={() => handleNotificationAction(notif.title)}
+                  className={`p-4 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${notif.is_read ? 'opacity-70' : 'bg-fi-accent/5 border-l-2 border-l-fi-accent'}`}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="text-white font-bold text-xs">{notif.title}</h4>
+                    <span className="text-[9px] text-gray-500 font-bold tracking-widest uppercase shrink-0 ml-2">
+                      {timeAgo(notif.created_at)}
+                    </span>
+                  </div>
                   <p className="text-gray-400 text-xs leading-relaxed">{notif.message}</p>
                 </div>
               ))

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 
+// ⚡ Global Regex to identify true Cryptographic UUIDs
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // --- THE LOGIC ENGINE (Inline) ---
 function getTrustTier(score) {
   if (score < 20) return { label: 'GHOST', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' };
@@ -15,18 +18,30 @@ export default function TrustBadge({ username, className = "" }) {
 
   const fetchTS = useCallback(async () => {
     if (!username) return;
-    const { data } = await supabase.from('user_profiles').select('trust_score').eq('user_name', username).single();
-    if (data) setTs(data.trust_score);
+    
+    // ⚡ Smart Column Detection: Routing the query based on data type
+    const queryColumn = UUID_REGEX.test(username) ? 'id' : 'user_name';
+    
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('trust_score')
+      .eq(queryColumn, username)
+      .single();
+      
+    if (data && !error) setTs(data.trust_score);
   }, [username]);
 
   useEffect(() => {
+    // 1. משיכה ראשונית של המוניטין בעת טעינת התג
     fetchTS();
+    
+    // 2. האזנה לפעימת ה-DOM הגלובלית בלבד (Zero WebSockets)
     window.addEventListener('force_ts_refresh', fetchTS);
-    const tsChannel = supabase.channel(`ts_${username}`).on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles', filter: `user_name=eq.${username}` }, (payload) => {
-      if (payload.new) setTs(payload.new.trust_score);
-    }).subscribe();
-    return () => { window.removeEventListener('force_ts_refresh', fetchTS); supabase.removeChannel(tsChannel); };
-  }, [username, fetchTS]);
+      
+    return () => { 
+      window.removeEventListener('force_ts_refresh', fetchTS); 
+    };
+  }, [fetchTS]);
 
   const tier = getTrustTier(ts);
   const isApex = tier.label === 'APEX';
@@ -35,17 +50,14 @@ export default function TrustBadge({ username, className = "" }) {
     <div 
       className={`group relative inline-flex items-center gap-2 px-2 py-0.5 rounded border transition-all duration-300 ${tier.bg} ${tier.border} ${className}`}
     >
-      {/* הראנק (ROOKIE, PRO וכו') */}
       <div className={`text-[10px] font-black tracking-widest uppercase ${tier.color} ${isApex ? 'animate-pro-shine' : ''}`}>
         {tier.label}
       </div>
 
-      {/* המספר הגולמי - מוצג תמיד אבל בעיצוב עדין */}
       <div className="text-[9px] font-bold text-white/60 border-l border-white/10 pl-1.5">
         {ts}<span className="text-[7px] ml-0.5 opacity-50">TS</span>
       </div>
 
-      {/* מד התקדמות מיקרוסקופי בתחתית התגית */}
       {!isApex && (
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-black/20 overflow-hidden rounded-b">
           <div 
@@ -55,7 +67,6 @@ export default function TrustBadge({ username, className = "" }) {
         </div>
       )}
 
-      {/* Hover Tooltip - מוצג רק במעבר עכבר (Desktop) */}
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
         <div className="bg-black text-[9px] text-white px-2 py-1 rounded shadow-xl whitespace-nowrap border border-white/10">
           Trust Score: {ts}/100
