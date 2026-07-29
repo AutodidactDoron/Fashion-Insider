@@ -1,0 +1,47 @@
+Folder PATH listing for volume Windows
+Volume serial number is 5E02-2F20
+C:\USERS\USER\DESKTOP\FASHION INSIDER BOOTCAMP\APP\SRC
+|   App.jsx
+|   index.css
+|   main.jsx
+|   supabaseClient.js
+|   
++---components
+|       AddAssetModal.jsx
+|       AdminIdVerifications.jsx
+|       AdminLiquidations.jsx
+|       AdminPanel.jsx
+|       AdminRoute.jsx
+|       CommunityContent.jsx
+|       CreateTradeModal.jsx
+|       CreditLiquidityInput.tsx
+|       DashboardContent.jsx
+|       GlobalRealtimeEngine.jsx
+|       IdVerificationUpload.jsx
+|       InterestedAction.jsx
+|       MainLayout.jsx
+|       MyCloset.jsx
+|       MyPostsContent.jsx
+|       MyTradesContent.jsx
+|       NotificationBell.jsx
+|       ProfileEditModal.jsx
+|       ProtectedRoute.jsx
+|       Sidebar.jsx
+|       TopBar.jsx
+|       TopUpModal.jsx
+|       TreasuryPanel.jsx
+|       TriageQueues.jsx
+|       TrustBadge.jsx
+|       VaultSelectorModal.jsx
+|       
++---pages
+|       Dashboard.jsx
+|       Login.jsx
+|       Messages.jsx
+|       MyPosts.jsx
+|       Profile.jsx
+|       Settings.jsx
+|       Signup.jsx
+|       
+\---src
+    \---utils

@@ -1,0 +1,12 @@
+# Fashion Insider - Master Architecture
+
+## Core Rules:
+1. NEVER delete or overwrite existing features (e.g., AdminLiquidations) without explicit permission. Always integrate side-by-side.
+2. The Database relies STRICTLY on UUIDs for backend logic. Usernames are for Frontend UI ONLY.
+3. Strict Right-to-Left (RTL) alignment for Hebrew responses.
+
+## Active Modules:
+- `AdminPanel`: Router component loading sub-panels (Treasury, Liquidations, Verifications).
+- `TreasuryPanel`: Reads from `platform_revenue_ledger`.
+- `AdminLiquidations`: Handles wire transfers for blocked users.
+- `TradeRoomEngine`: P2P secure connections, 5% fee extraction, Trust Score modifiers.

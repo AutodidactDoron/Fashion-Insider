@@ -54,8 +54,9 @@ export default function TrustBadge({ username, className = "" }) {
         {tier.label}
       </div>
 
-      <div className="text-[9px] font-bold text-white/60 border-l border-white/10 pl-1.5">
-        {ts}<span className="text-[7px] ml-0.5 opacity-50">TS</span>
+      {/* ⚡ THE APEX CONTRAST FIX: התניית צבע דינמית למספר והקו המפריד */}
+      <div className={`text-[9px] font-bold border-l pl-1.5 ${isApex ? 'text-black/80 border-black/20' : 'text-white/60 border-white/10'}`}>
+        {ts}<span className={`text-[7px] ml-0.5 ${isApex ? 'font-black opacity-70' : 'opacity-50'}`}>TS</span>
       </div>
 
       {!isApex && (

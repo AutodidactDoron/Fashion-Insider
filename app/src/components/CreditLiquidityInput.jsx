@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-interface CreditLiquidityInputProps {
-  userId: string;
-  receiverId: string;
-  onTradeCreated: () => void;
-}
-
-export default function CreditLiquidityInput({ userId, receiverId, onTradeCreated }: CreditLiquidityInputProps) {
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [creditsToOffer, setCreditsToOffer] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [uiError, setUiError] = useState<string | null>(null);
+export default function CreditLiquidityInput({ userId, receiverId, onTradeCreated }) {
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [creditsToOffer, setCreditsToOffer] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uiError, setUiError] = useState(null);
 
   // סינכרון יתרת הארנק של היוזם בזמן אמת
   useEffect(() => {
@@ -30,7 +24,7 @@ export default function CreditLiquidityInput({ userId, receiverId, onTradeCreate
     if (userId) fetchCurrentLiquidity();
   }, [userId]);
 
-  const executeSecureTrade = async (e: React.FormEvent) => {
+  const executeSecureTrade = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setUiError(null);

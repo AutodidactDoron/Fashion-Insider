@@ -11,9 +11,12 @@ import MyPostsContent from './components/MyPostsContent';
 import MyTradesContent from './components/MyTradesContent';
 import AdminPanel from './components/AdminPanel';
 import AdminRoute from './components/AdminRoute'; 
-
-// ⚡ הייבוא החסר: קוראים למנוע ה-V2 מהקובץ הנפרד שיצרת
+import Messages from './pages/Messages'; 
 import GlobalRealtimeEngine from './components/GlobalRealtimeEngine';
+import Settings from './pages/Settings';
+
+// ⚡ THE NEW IMPORT: עמוד הפרופיל הפומבי
+import Profile from './pages/Profile';
 
 function ComingSoonPage({ title }) {
   return (
@@ -27,11 +30,7 @@ function ComingSoonPage({ title }) {
 export default function App() {
   return (
     <BrowserRouter>
-      {/* ⚡ V2 Master Engine 
-        כאן המנוע מוזרק לשורש המערכת. 
-        שיים לב שבעתיד נצטרך להעביר לו את ה-currentUserId, 
-        אבל המנוע בנוי לא לקרוס גם אם הוא ריק כרגע.
-      */}
+      {/* ⚡ V2 Master Engine */}
       <GlobalRealtimeEngine currentUserId={null} />
       
       <Routes>
@@ -45,6 +44,9 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/community" element={<CommunityContent />} />
           <Route path="/my-posts" element={<MyPostsContent/>} />
+          
+          {/* ⚡ THE INTEGRATION: ראוט הפרופיל הדינמי */}
+          <Route path="/profile/:username" element={<Profile />} />
 
           {/* 🔴 הכספת הסגורה (The Vault - Traders Only) 🔴 */}
           <Route 
@@ -57,11 +59,11 @@ export default function App() {
           />
           <Route 
             path="/messages" 
-            element={<ProtectedRoute><ComingSoonPage title="Messages" /></ProtectedRoute>} 
+            element={<ProtectedRoute><Messages /></ProtectedRoute>} 
           />
           <Route 
             path="/settings" 
-            element={<ProtectedRoute><ComingSoonPage title="Settings" /></ProtectedRoute>} 
+            element={<ProtectedRoute><Settings /></ProtectedRoute>} 
           />
         </Route>
 

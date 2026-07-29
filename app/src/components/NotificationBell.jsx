@@ -45,35 +45,24 @@ export default function NotificationBell() {
     initBell();
   }, []);
 
-  // ⚡ THE LIVE WIRE: WebSocket Engine with Telemetry
   useEffect(() => {
     if (!currentUsername) return;
     
-    console.log(`[BELL ENGINE] 📡 Initiating Realtime connection for: ${currentUsername}`);
-
     const channel = supabase
       .channel('system-radar')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
-          console.log("[BELL ENGINE] 🔥 RAW REALTIME HIT:", payload);
-          
           const targetUser = payload.new.user_name || "";
           
           if (targetUser.trim().toLowerCase() === currentUsername.trim().toLowerCase()) {
-            console.log("[BELL ENGINE] ✅ Target Match! Ringing the bell.");
             setNotifications(prev => [payload.new, ...prev].slice(0, 10));
             setUnreadCount(prev => prev + 1);
-          } else {
-            console.log(`[BELL ENGINE] ❌ Mismatch. Target in DB: '${targetUser}', Current User: '${currentUsername}'`);
           }
         }
       )
-      .subscribe((status, err) => {
-        console.log("[BELL ENGINE] 🔌 Connection Status:", status);
-        if (err) console.error("[BELL ENGINE] ⚠️ Connection Error:", err);
-      });
+      .subscribe();
 
     const handleForceRefresh = () => fetchNotifications(currentUsername);
     window.addEventListener('refresh_notifications', handleForceRefresh);
@@ -109,24 +98,28 @@ export default function NotificationBell() {
     }
   };
 
-  // ⚡ THE SMART ROUTER
+  // ⚡ THE SMART ROUTER (Upgraded Keyword Matrix)
   const handleNotificationAction = (title) => {
     setIsOpen(false); 
     const upperTitle = title.toUpperCase();
     
-    // ניתוב נכסים לארון
-    if (upperTitle.includes('VERIFIED') || upperTitle.includes('EXPANDED') || upperTitle.includes('FAILED') || upperTitle.includes('CONFISCATED')) {
-      navigate('/closet');
-    } 
-    // ניתוב טריידים לחדרי העסקאות
-    else if (upperTitle.includes('TRADE')) {
-      navigate('/trades');
-    } 
-    // ניתוב הצעות ללוח המודעות
-    else if (upperTitle.includes('OFFER')) {
+    // 1. ניתוב פוסטים ומתעניינים ללוח המודעות (My Posts)
+    if (upperTitle.includes('INTEREST') || upperTitle.includes('OFFER') || upperTitle.includes('POST')) {
       navigate('/my-posts');
     } 
-    // ברירת מחדל
+    // 2. ניתוב עסקאות, פגישות וסכסוכים לחדרי הטריידים (Trades)
+    else if (upperTitle.includes('TRADE') || upperTitle.includes('ESCROW') || upperTitle.includes('MEETUP') || upperTitle.includes('DISPUTE') || upperTitle.includes('ABORT') || upperTitle.includes('COMPLETED') || upperTitle.includes('CANCEL')) {
+      navigate('/trades');
+    } 
+    // 3. ניתוב נכסים, אימותים וקנסות ארון (Closet)
+    else if (upperTitle.includes('VERIFIED') || upperTitle.includes('VAULT') || upperTitle.includes('ASSET') || upperTitle.includes('EXPANDED') || upperTitle.includes('FAILED') || upperTitle.includes('CONFISCATED')) {
+      navigate('/closet');
+    }
+    // 4. הודעות פרטיות
+    else if (upperTitle.includes('MESSAGE')) {
+      navigate('/messages');
+    }
+    // 5. ברירת מחדל (Trust Score alerts, Liquidations, System Admin)
     else {
       navigate('/dashboard'); 
     }

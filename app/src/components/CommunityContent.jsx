@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import VaultSelectorModal from './VaultSelectorModal';
 import { supabase } from '../supabaseClient'; 
 import InterestedAction from './InterestedAction';
@@ -11,35 +12,72 @@ export default function CommunityContent() {
   const [recentExecutions, setRecentExecutions] = useState([]); 
   const [broadcastText, setBroadcastText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [isBanned, setIsBanned] = useState(false);
+  const [myAvatar, setMyAvatar] = useState('');
+  
+  // ⚡ THE NEW GUARDS: STATE
+  const [currentUser, setCurrentUser] = useState(null);
+  const [dailyPostCount, setDailyPostCount] = useState(0);
+  const [maxPostsAllowed, setMaxPostsAllowed] = useState(3);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Initial Load
   useEffect(() => {
+    const initUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase.from('user_profiles').select('user_name, is_pro, banned_until, avatar_url').eq('id', user.id).single();
+      
+      if (data) {
+        if (data.banned_until && new Date(data.banned_until) > new Date()) {
+          setIsBanned(true);
+        }
+        
+        setMyAvatar(data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user_name}`);
+        setCurrentUser(data);
+        setMaxPostsAllowed(data.is_pro ? 15 : 3);
+        
+        // שליפת המכסה הקיימת בזמן טעינת הקומפוננטה
+        fetchDailyPostUsage(data.user_name);
+      }
+    };
+    
+    initUserData();
     fetchFeed();
   }, []);
 
-  // ⚡ 2. THE GLOBAL ENGINE CONNECTION
   useEffect(() => {
-    const handleForceRefresh = () => {
-      fetchFeed();
-    };
-
+    const handleForceRefresh = () => fetchFeed();
     window.addEventListener('refresh_feed', handleForceRefresh);
-
-    return () => {
-      window.removeEventListener('refresh_feed', handleForceRefresh);
-    };
+    return () => window.removeEventListener('refresh_feed', handleForceRefresh);
   }, []);
+
+  // ⚡ הפונקציה שבודקת את המכסה מול השרת למען ה-UI
+  const fetchDailyPostUsage = async (userName) => {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    const { count, error } = await supabase
+      .from('community_posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_name', userName)
+      .gte('created_at', twentyFourHoursAgo); 
+
+    if (!error && count !== null) {
+      setDailyPostCount(count);
+    }
+  };
 
   const fetchFeed = async () => {
     setIsLoading(true);
-
-    // ⚡ 1. THE GARBAGE COLLECTOR: מנקה את הברזל מפוסטים מתים לפני המשיכה
     await supabase.rpc('clean_zombie_posts');
 
-    // ⚡ 2. THE CLEAN FETCH: שואב את הפיד המעודכן
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
     const { data: postsData, error } = await supabase
       .from('community_posts')
       .select('*')
+      .gte('bumped_at', twentyFourHoursAgo) 
       .order('bumped_at', { ascending: false })
       .limit(50);
     
@@ -49,14 +87,29 @@ export default function CommunityContent() {
       return;
     }
 
-    if (postsData) {
-      // ⚡ OMNI-CLEAN: אין יותר המרות UUID. הנתונים מגיעים נקיים מהברזל.
+    if (postsData && postsData.length > 0) {
+      const uniqueUsernames = [...new Set(postsData.map(p => p.user_name))];
+      
+      const { data: profilesData } = await supabase
+        .from('user_profiles')
+        .select('user_name, avatar_url, trust_score')
+        .in('user_name', uniqueUsernames);
+
+      const profileMap = (profilesData || []).reduce((acc, curr) => {
+        acc[curr.user_name] = curr;
+        return acc;
+      }, {});
+
       const enrichedFeed = postsData.map(post => ({
         ...post,
-        display_name: post.user_name 
+        display_name: post.user_name,
+        avatar_url: profileMap[post.user_name]?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.user_name}`,
+        trustScore: profileMap[post.user_name]?.trust_score || 0
       }));
 
       setFeed(enrichedFeed);
+    } else {
+      setFeed([]);
     }
     setIsLoading(false);
   };
@@ -71,31 +124,20 @@ export default function CommunityContent() {
 
   const handleBroadcast = async () => {
     if (!broadcastText.trim() && attachedAssets.length === 0) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!currentUser) return alert("System Alert: Identity resolution failed.");
     
-    if (!user) {
-      alert("Authentication error: Please log in to broadcast.");
+    // ⚡ FIRST SHIELD: UI Quota Check
+    if (dailyPostCount >= maxPostsAllowed) {
+      alert(`QUOTA EXHAUSTED: You have reached your limit of ${maxPostsAllowed} broadcasts for the next 24 hours.`);
       return;
     }
 
-    // ⚡ IDENTITY RESOLUTION: שאיבת השם המפורש מהפרופיל לפני ההזרקה
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('user_name')
-      .eq('id', user.id)
-      .single();
+    setIsSubmitting(true);
 
-    const explicitUserName = profile?.user_name || user.user_metadata?.user_name;
-
-    if (!explicitUserName) {
-      alert("System Alert: Identity resolution failed. Please refresh.");
-      return;
-    }
-
+    // חזרה לשימוש ב-INSERT המקורי שלך (הטריגר במסד אמור לתפוס חריגות)
     const newPost = {
-      user_name: explicitUserName, // <-- The Hard Fix: Injecting raw string
-      is_pro: true,
+      user_name: currentUser.user_name, 
+      is_pro: currentUser.is_pro,
       is_verified: true,
       type: 'WTS', 
       content: broadcastText,
@@ -104,88 +146,125 @@ export default function CommunityContent() {
 
     const { error } = await supabase.from('community_posts').insert([newPost]);
 
-    if (!error) {
-      setBroadcastText('');
-      setAttachedAssets([]);
-    } else {
-      console.error("Broadcast Error:", error);
+    if (error) {
+      setIsSubmitting(false);
+      // בדיקה האם השגיאה חזרה מהטריגר של מסד הנתונים
+      if (error.message.includes('Quota limit reached')) {
+        alert("Server Reject: You have exhausted your broadcast quota.");
+        fetchDailyPostUsage(currentUser.user_name);
+      } else {
+        console.error("Broadcast Error:", error);
+        alert("System error. Failed to broadcast.");
+      }
+      return;
     }
+
+    setBroadcastText('');
+    setAttachedAssets([]);
+    setDailyPostCount(prev => prev + 1);
+    fetchFeed(); 
+    setIsSubmitting(false);
   };
+
+  const isQuotaExhausted = dailyPostCount >= maxPostsAllowed;
 
   return (
     <section id="community-section" className="pb-20">
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto">
         
-        {/* הפיד המרכזי */}
         <div className="flex-1 space-y-6 min-w-0">
           
-          <div className="bg-[#111113] rounded-xl p-3 sm:p-5 border border-white/10 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-fi-accent" />
-            
-            <div className="flex items-center gap-2 sm:gap-4 w-full">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Founder" alt="Me" className="w-full h-full object-cover" />
-              </div>
-              
-              <input
-                type="text"
-                value={broadcastText}
-                onChange={(e) => setBroadcastText(e.target.value)}
-                placeholder="Broadcast a trade..."
-                className="flex-1 min-w-0 w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-white placeholder-gray-500 text-xs sm:text-sm focus:outline-none focus:border-fi-accent transition-all"
-              />
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsVaultOpen(true)} 
-                  className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-fi-accent hover:border-fi-accent hover:bg-fi-accent/10 transition-all group"
-                  title="Attach Vault Asset"
-                >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleBroadcast} 
-                  className="w-9 h-9 sm:w-auto sm:px-6 sm:py-3 shrink-0 flex items-center justify-center rounded-lg bg-white !text-black !font-bold text-sm hover:bg-gray-200 transition-colors"
-                >
-                  <span className="hidden sm:inline">BROADCAST</span>
-                  <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                </button>
-              </div>
+          {isBanned ? (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6 text-center shadow-[0_0_20px_rgba(249,115,22,0.1)]">
+              <p className="text-orange-500 font-black tracking-widest uppercase text-sm">Account Suspended</p>
+              <p className="text-orange-400/80 text-xs mt-1">You are in read-only mode. Broadcasting and trading are disabled.</p>
             </div>
+          ) : (
+            <div className={`bg-[#111113] rounded-xl p-3 sm:p-5 border shadow-2xl relative overflow-hidden transition-all ${isQuotaExhausted ? 'border-red-900/50 opacity-80' : 'border-white/10'}`}>
+              <div className={`absolute top-0 left-0 w-1 h-full ${isQuotaExhausted ? 'bg-red-500' : 'bg-fi-accent'}`} />
+              
+              {/* ⚡ UI QUOTA LOCK ALERT */}
+              {isQuotaExhausted && (
+                <div className="absolute top-0 right-0 left-0 bg-red-500/10 border-b border-red-500/20 px-4 py-1.5 flex items-center justify-center gap-2 backdrop-blur-md z-10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-red-500 tracking-widest uppercase">BROADCAST QUOTA EXHAUSTED ({dailyPostCount}/{maxPostsAllowed})</span>
+                </div>
+              )}
 
-            {attachedAssets.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/5 w-full">
-                {attachedAssets.map(asset => (
-                  <div key={asset.id} className="flex items-center gap-2 bg-black/40 border border-fi-accent/20 rounded-lg p-1.5 pr-3 shadow-sm">
-                    <img src={asset.stock_image_url} alt="" className="w-8 h-6 object-contain bg-white rounded-sm" />
-                    <span className="text-[11px] font-bold text-white truncate max-w-[100px]">{asset.name}</span>
-                    <button onClick={() => removeAsset(asset.id)} className="text-gray-500 hover:text-white transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                ))}
+              <div className={`flex items-center gap-2 sm:gap-4 w-full ${isQuotaExhausted ? 'mt-6' : ''}`}>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden border border-white/10">
+                  <img src={myAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"} alt="Me" className="w-full h-full object-cover" />
+                </div>
+                
+                <input
+                  type="text"
+                  value={broadcastText}
+                  onChange={(e) => setBroadcastText(e.target.value)}
+                  placeholder={isQuotaExhausted ? "Quota reached. Upgrade to PRO for more." : "Broadcast a trade..."}
+                  disabled={isQuotaExhausted || isSubmitting}
+                  className="flex-1 min-w-0 w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 text-white placeholder-gray-500 text-xs sm:text-sm focus:outline-none focus:border-fi-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsVaultOpen(true)} 
+                    disabled={isQuotaExhausted || isSubmitting}
+                    className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-fi-accent hover:border-fi-accent hover:bg-fi-accent/10 transition-all group disabled:opacity-50 disabled:pointer-events-none" 
+                    title="Attach Vault Asset"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                  </button>
+
+                  <button 
+                    type="button" 
+                    onClick={handleBroadcast} 
+                    disabled={isQuotaExhausted || isSubmitting}
+                    className="w-9 h-9 sm:w-auto sm:px-6 sm:py-3 shrink-0 flex items-center justify-center rounded-lg bg-white !text-black !font-bold text-sm hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <span className="hidden sm:inline">{isSubmitting ? 'SENDING...' : 'BROADCAST'}</span>
+                    <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+
+              {attachedAssets.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/5 w-full">
+                  {attachedAssets.map(asset => (
+                    <div key={asset.id} className="flex items-center gap-2 bg-black/40 border border-fi-accent/20 rounded-lg p-1.5 pr-3 shadow-sm">
+                      <img src={asset.stock_image_url} alt="" className="w-8 h-6 object-contain bg-white rounded-sm" />
+                      <span className="text-[11px] font-bold text-white truncate max-w-[100px]">{asset.name}</span>
+                      <button onClick={() => removeAsset(asset.id)} className="text-gray-500 hover:text-white transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-4">
             {feed.map((post) => (
               <div key={post.id} className="bg-[#111113] rounded-xl p-4 sm:p-6 border border-white/5 hover:border-white/10 transition-colors group">
                 <div className="flex gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center text-white font-bold text-base sm:text-lg shrink-0">
-                    {post.display_name ? post.display_name.charAt(0).toUpperCase() : 'U'}
-                  </div>
+                  
+                  <Link to={`/profile/${post.display_name}`} className="shrink-0 cursor-pointer">
+                    <img 
+                      src={post.avatar_url} 
+                      alt={post.display_name} 
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover bg-black border border-white/10 group-hover:border-fi-accent/50 transition-colors shadow-lg"
+                    />
+                  </Link>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                        <span className="font-bold text-white text-sm sm:text-base">{post.display_name}</span>
-                        <TrustBadge username={post.display_name} className="text-[9px] sm:text-[10px] bg-black/50 border border-white/5 px-2 py-0.5 rounded shadow-sm" />
+                        <Link to={`/profile/${post.display_name}`} className="font-bold text-white text-sm sm:text-base hover:text-fi-accent transition-colors">
+                          {post.display_name}
+                        </Link>
+                        
+                        <TrustBadge username={post.display_name} className="text-[9px] sm:text-[10px]" />
                         {post.is_pro && <span className="text-xs sm:text-sm" title="PRO Trader">👑</span>}
                         {post.is_verified && (
                           <svg className="w-3 h-3 sm:w-4 sm:h-4 text-fi-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -228,7 +307,6 @@ export default function CommunityContent() {
           </div>
         </div>
 
-        {/* צד ימין - מודיעין שוק */}
         <div className="w-full lg:w-80 shrink-0 space-y-6">
           <div className="bg-[#111113] rounded-xl p-5 border border-white/10 relative overflow-hidden sticky top-24">
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-3xl rounded-full" />

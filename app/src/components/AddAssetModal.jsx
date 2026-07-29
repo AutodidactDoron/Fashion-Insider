@@ -134,6 +134,21 @@ export default function AddAssetModal({ isOpen, onClose }) {
       return;
     }
 
+    // ⚡ IDENTITY RESOLUTION ENGINE
+    // שואבים את השם האמיתי של המשתמש לפני הכתיבה לברזל
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_name')
+      .eq('id', user.id)
+      .single();
+    
+    const explicitUserName = profile?.user_name || user.user_metadata?.user_name;
+    
+    if (!explicitUserName) {
+      alert("System Alert: Identity missing. Please make sure your profile is fully set up.");
+      return;
+    }
+
     const isReady = ingestionMode === 'index' 
       ? (selectedItem && isSizeReady && isConditionReady && proofFiles.length > 0)
       : (isUnlistedValid && isSizeReady && proofFiles.length > 0);
@@ -168,10 +183,10 @@ export default function AddAssetModal({ isOpen, onClose }) {
 
       if (ingestionMode === 'index') {
         const { error } = await supabase.from('user_closet_items').insert([{
-          user_name: user.id, 
+          user_name: explicitUserName, // ⚡ FIXED: מחדירים את השם האמיתי במקום ה-UUID
           catalog_item_id: selectedItem.id,
           size: finalSize,
-          condition_status: selectedCondition, // ⚡ Injects user's selection
+          condition_status: selectedCondition, 
           proof_image_url: uploadedImageUrls[0], 
           is_verified: false
         }]); 
@@ -188,7 +203,7 @@ export default function AddAssetModal({ isOpen, onClose }) {
         const finalName = `${finalModel} - ${finalColor}`;
 
         const { error } = await supabase.from('catalog_requests').insert([{
-          user_name: user.id, 
+          user_name: explicitUserName, // ⚡ FIXED: מחדירים את השם האמיתי
           proposed_brand: finalBrand,
           proposed_name: finalName,
           size: finalSize,

@@ -1,5 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import TopUpModal from './TopUpModal'; 
+import NotificationBell from './NotificationBell';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+import TriageQueuesPanel from './TriageQueues'; 
+// ⚡ THE NEW IMPORT: מנוע הגזברות וחיסול הנכסים
+import AdminLiquidations from './AdminLiquidations';
+// ⚡ THE NEW IMPORT: מנוע אימות תעודות הזהות
+import AdminIdVerifications from './AdminIdVerifications';
+import TreasuryPanel from './TreasuryPanel';
+
+const CONDITION_MULTIPLIERS = {
+  DS: 1.0,
+  VNDS: 0.85,
+  USED: 0.65,
+};
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('triage');
@@ -197,7 +214,6 @@ export default function AdminPanel() {
 
   const handleRestoreFromBin = async (binItem) => {
     try {
-      // ⚡ THE FIX: קילוף שדות ההעשרה הווירטואליים לפני שמחזירים לברזל האמיתי
       const cleanPayload = { ...binItem.payload };
       delete cleanPayload.catalog_brand;
       delete cleanPayload.catalog_name;
@@ -422,7 +438,6 @@ export default function AdminPanel() {
     </div>
   );
 
-  // ⚡ The Visual Recycle Bin
   const renderRecycleBinTab = () => (
     <div className="space-y-6">
       <div className="bg-[#111113] border border-orange-500/30 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.05)]">
@@ -453,7 +468,6 @@ export default function AdminPanel() {
                   const daysLeft = Math.ceil((new Date(item.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
                   const isCloset = item.original_table === 'user_closet_items';
                   
-                  // ⚡ Fallback Logic for Enriched Payloads
                   const imgUrl = item.payload.stock_image_url || item.payload.catalog_image || item.payload.proof_image_url || 'https://placehold.co/100x100/111113/333?text=NO+IMG';
                   const assetBrand = item.payload.brand || item.payload.catalog_brand || 'UNKNOWN BRAND';
                   const assetName = item.payload.name || item.payload.catalog_name || item.payload.proposed_name || item.payload.id;
@@ -511,10 +525,30 @@ export default function AdminPanel() {
           <h1 className="text-xl font-black text-fi-accent uppercase tracking-widest">Admin</h1>
         </div>
         <nav className="flex-1 p-4 flex flex-col gap-2">
-          <button onClick={() => setActiveTab('triage')} className={`text-left px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'triage' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Triage Queues</button>
+          <button onClick={() => setActiveTab('triage')} className={`text-left px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'triage' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Asset Verifications</button>
+
+          {/* ⚡ THE NEW KYC TAB */}
+          <button onClick={() => setActiveTab('kyc')} className={`text-left flex justify-between items-center px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'kyc' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'text-gray-500 hover:text-gray-300'}`}>
+            Identity Audits
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+          </button>
+
+          <button onClick={() => setActiveTab('disputes')} className={`text-left flex justify-between items-center px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'disputes' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'text-gray-500 hover:text-gray-300'}`}>
+            Trade Disputes
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </button>
+
+          {/* ⚡ THE TREASURY TAB */}
+          <button onClick={() => setActiveTab('treasury')} className={`text-left flex justify-between items-center px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'treasury' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'text-gray-500 hover:text-gray-300'}`}>
+            Treasury
+            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </button>
+
           <button onClick={() => setActiveTab('catalog')} className={`text-left px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'catalog' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Master Catalog</button>
           <button onClick={() => setActiveTab('closets')} className={`text-left px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'closets' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>User Closets</button>
+          
           <div className="h-px bg-white/10 my-2"></div>
+          
           <button onClick={() => setActiveTab('recycle')} className={`text-left px-4 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex justify-between items-center ${activeTab === 'recycle' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'text-orange-900/60 hover:text-orange-500/80'}`}>
             Recycle Bin
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -526,6 +560,21 @@ export default function AdminPanel() {
           {loading ? <div className="animate-spin w-8 h-8 border-2 border-fi-accent border-t-transparent rounded-full mx-auto mt-20"></div> : (
             <>
               {activeTab === 'triage' && renderTriageTab()}
+              {activeTab === 'disputes' && <TriageQueuesPanel />}
+              {/* ⚡ THE RENDER: מנוע הגזברות */}
+              {activeTab === 'kyc' && <AdminIdVerifications />}
+              {activeTab === 'treasury' && (
+  <div className="flex flex-col gap-12 w-full">
+    {/* מנוע ההכנסות (כסף נכנס) */}
+    <TreasuryPanel />
+    
+    {/* מפריד ויזואלי */}
+    <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+    
+    {/* תור ההנזלות הקיים שלך (כסף יוצא) */}
+    <AdminLiquidations />
+  </div>
+)}
               {activeTab === 'catalog' && renderCatalogTab()}
               {activeTab === 'closets' && renderClosetsTab()}
               {activeTab === 'recycle' && renderRecycleBinTab()}

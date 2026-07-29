@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { supabase } from '../supabaseClient';
+import UpgradeModal from './UpgradeModal';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -20,7 +21,11 @@ export default function MyPostsContent() {
   const [editingPostId, setEditingPostId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [interests, setInterests] = useState({});
-  const [currentUser, setCurrentUser] = useState({ id: null, name: null });
+  const [currentUser, setCurrentUser] = useState({ id: null, name: null, isPro: false });
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  // ⚡ RATE LIMIT TRACKING STATE
+  const [dailyPostCount, setDailyPostCount] = useState(0);
 
   const openPanelsRef = useRef(new Set());
   const [refreshTick, setRefreshTick] = useState(0);
@@ -29,18 +34,20 @@ export default function MyPostsContent() {
     const initPage = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // ⚡ שליפת השם האמיתי מהברזל 
+        // שליפת השם והסטטוס PRO ישירות מפרופיל הליבה
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('user_name')
+          .select('user_name, is_pro')
           .eq('id', user.id)
           .single();
 
         const explicitName = profile?.user_name || user.user_metadata?.user_name;
-        setCurrentUser({ id: user.id, name: explicitName });
+        const isPro = profile?.is_pro || false;
+
+        setCurrentUser({ id: user.id, name: explicitName, isPro });
         
-        // עכשיו שהטבלאות נקיות, אנחנו שולפים את הפוסטים לפי השם החשוף
         fetchMyPosts(explicitName || user.id); 
+        fetchDailyPostUsage(explicitName || user.id);
       } else {
         setIsLoading(false); 
       }
@@ -62,14 +69,31 @@ export default function MyPostsContent() {
     }
   }, [refreshTick]);
 
+  // ⚡ 1. ספירת כל הפוסטים שנוצרו ב-24 השעות האחרונות (כולל אלו שנמחקו!)
+  const fetchDailyPostUsage = async (userIdentifier) => {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    const { count, error } = await supabase
+      .from('community_posts')
+      .select('id', { count: 'exact', head: true })
+      .or(`user_name.eq.${userIdentifier},user_name.eq.${currentUser.id}`)
+      .gte('created_at', twentyFourHoursAgo); 
+
+    if (!error && count !== null) {
+      setDailyPostCount(count);
+    }
+  };
+
   const fetchMyPosts = async (userIdentifier) => {
     setIsLoading(true);
-    // Omni-Catcher גיבוי למקרה שיש פוסטים היסטוריים עם UUID או שמות
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
     const { data, error } = await supabase
       .from('community_posts')
       .select('*')
       .or(`user_name.eq.${userIdentifier},user_name.eq.${currentUser.id}`)
-      .order('created_at', { ascending: false });
+      .gte('bumped_at', twentyFourHoursAgo)
+      .order('bumped_at', { ascending: false });
 
     if (data) setMyPosts(data);
     if (error) console.error("Error fetching posts:", error);
@@ -85,8 +109,6 @@ export default function MyPostsContent() {
 
     if (error || !interestsData) return;
 
-    // מכיוון שכבר ניקינו את טבלת ההצעות מ-UUIDs בקובץ הקודם, רוב השמות שיגיעו פה יהיו טקסט.
-    // הלוגיקה הזו נשארת רק כרשת ביטחון לפרופילים שיש להם Trust Score.
     const potentialUUIDs = new Set();
     const potentialNames = new Set();
     
@@ -98,17 +120,15 @@ export default function MyPostsContent() {
     const profilesMap = {};
 
     if (potentialUUIDs.size > 0 || potentialNames.size > 0) {
-      // אנחנו מושכים נתוני פרופיל ו-Trust Score גם לפי מזהים וגם לפי שמות פשוטים
       let query = supabase.from('user_profiles').select('id, user_name, trust_score');
       if (potentialUUIDs.size > 0) query = query.in('id', Array.from(potentialUUIDs));
-      // fallback if only names are used
       
       const { data: profilesData } = await query;
 
       if (profilesData) {
         profilesData.forEach(p => {
           profilesMap[p.id] = { name: p.user_name, ts: p.trust_score || 0 };
-          profilesMap[p.user_name] = { name: p.user_name, ts: p.trust_score || 0 }; // מיפוי כפול
+          profilesMap[p.user_name] = { name: p.user_name, ts: p.trust_score || 0 };
         });
       }
     }
@@ -159,9 +179,16 @@ export default function MyPostsContent() {
   };
 
   const handleDelete = async (postId) => {
-    const { error } = await supabase.from('community_posts').delete().eq('id', postId);
+    const { error } = await supabase
+      .from('community_posts')
+      .update({ is_deleted: true })
+      .eq('id', postId);
+
     if (!error) {
       setMyPosts(prev => prev.filter(post => post.id !== postId));
+      fetchDailyPostUsage(currentUser.name || currentUser.id);
+    } else {
+      alert("Error deleting post.");
     }
   };
 
@@ -184,7 +211,6 @@ export default function MyPostsContent() {
     }
   };
 
-  // ⚡ THE FIX: Identity Protocol for Trade Creation
   const handleInviteToTrade = async (postId, responderName, responderId) => {
     if (!currentUser.name) return alert("System Identity Check Failed. Please refresh.");
 
@@ -193,8 +219,8 @@ export default function MyPostsContent() {
         .from('trade_rooms')
         .insert([{
           post_id: postId,
-          initiator_name: currentUser.name, // <-- הזרקה של השם האמיתי שלך (למשל Doron)
-          responder_name: responderName,   // <-- הזרקה של השם האמיתי של המציע (למשל Ceo_Test)
+          initiator_name: currentUser.name,
+          responder_name: responderName,
           status: 'pending_acceptance'
         }])
         .select()
@@ -213,7 +239,7 @@ export default function MyPostsContent() {
         .eq('sender_name', responderId);
 
       await supabase.from('notifications').insert([{
-        user_name: responderName, // הזרקה למערכת ההתראות תעבוד אם היא מכויילת ל-user_name טקסטואלי
+        user_name: responderName,
         title: 'TRADE INVITATION 🤝',
         message: `You were invited to a private trade room. Go to My Trades to enter.`
       }]);
@@ -225,10 +251,98 @@ export default function MyPostsContent() {
     }
   };
 
+  const handleBumpPost = async (postId) => {
+    if (!currentUser.name) return alert("User identification error.");
+
+    try {
+      const { data, error } = await supabase.rpc('bump_post', {
+        p_post_id: postId,
+        p_user_name: currentUser.name,
+        p_bump_cost: 50
+      });
+
+      if (error) {
+        if (error.message.includes('INSUFFICIENT_FUNDS')) {
+          alert("Insufficient Credits! You need 50 CR to bump this post.");
+        } else {
+          alert("Bump failed: " + error.message);
+        }
+        return;
+      }
+
+      alert("🚀 Broadcast successfully bumped to the top of the market!");
+      fetchMyPosts(currentUser.name || currentUser.id);
+
+    } catch (err) {
+      console.error("Bump Error:", err);
+    }
+  };
+
   if (isLoading) return <div className="text-white p-8">Loading your vault...</div>;
+
+  const maxPosts = currentUser.isPro ? 15 : 3;
+  const usagePercentage = Math.min(100, Math.round((dailyPostCount / maxPosts) * 100));
+  const isLimitReached = dailyPostCount >= maxPosts;
 
   return (
     <section id="my-posts-section" className="pb-20 max-w-4xl mx-auto">
+      
+      {/* ⚡ THE GEMINI SCARCITY BAR */}
+      <div className="mb-6 bg-[#111113] border border-white/10 rounded-2xl p-5 relative overflow-hidden shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${isLimitReached ? 'bg-red-500 animate-pulse' : 'bg-fi-accent'}`} />
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">24h Broadcast Quota</h3>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${currentUser.isPro ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/10 text-gray-400'}`}>
+                  {currentUser.isPro ? 'PRO TIER' : 'FREE TIER'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {isLimitReached 
+                  ? "Quota exhausted. Upgrade to PRO or wait for reset." 
+                  : `${maxPosts - dailyPostCount} broadcasts remaining today.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <span className="text-xs font-black text-white">{dailyPostCount} / {maxPosts}</span>
+            <span className="text-[10px] text-gray-500 ml-1">POSTS</span>
+          </div>
+        </div>
+
+        <div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/5 p-0.5">
+          <div 
+            className={`h-full rounded-full transition-all duration-500 ${
+              isLimitReached 
+                ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' 
+                : usagePercentage > 66 
+                ? 'bg-amber-400' 
+                : 'bg-gradient-to-r from-fi-accent via-yellow-400 to-amber-500'
+            }`}
+            style={{ width: `${usagePercentage}%` }}
+          />
+        </div>
+      </div>
+
+      {/* ⚡ THE NEW PRO BANNER INJECTION (Replaces the old inline text trigger) */}
+      {!currentUser.isPro && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-950/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-amber-500 font-black tracking-widest text-sm uppercase">Boost Your Visibility</h3>
+            <p className="text-zinc-400 text-xs mt-1">Upgrade to PRO to unlock 15 daily broadcasts and priority feed placement.</p>
+          </div>
+          <button
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs tracking-widest px-6 py-2.5 rounded shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all uppercase"
+          >
+            UPGRADE TO PRO
+          </button>
+        </div>
+      )}
+
       <div className="mb-8 flex items-center justify-between border-b border-white/10 pb-4">
         <div>
           <h1 className="text-2xl font-black text-white uppercase tracking-tighter">My Active Broadcasts</h1>
@@ -312,6 +426,12 @@ export default function MyPostsContent() {
                 >
                   DELETE
                 </button>
+                <button 
+                  onClick={() => handleBumpPost(post.id)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded bg-fi-accent/10 text-fi-accent border border-fi-accent/30 hover:bg-fi-accent hover:text-black font-black text-xs transition-all shadow-md"
+                >
+                  ⚡ BUMP (50 CR)
+                </button>
               </div>
 
               <div className="mt-6 border-t border-white/5 pt-4">
@@ -391,6 +511,13 @@ export default function MyPostsContent() {
           ))}
         </div>
       )}
+
+      {/* ⚡ THE PORTAL INJECTION (Upgrade Modal) */}
+      <UpgradeModal 
+        isOpen={isUpgradeModalOpen} 
+        onClose={() => setIsUpgradeModalOpen(false)} 
+        currentUser={currentUser} 
+      />
     </section>
   );
 }

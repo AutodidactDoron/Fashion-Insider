@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import TopUpModal from './TopUpModal'; 
 import NotificationBell from './NotificationBell';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import UpgradeModal from './UpgradeModal';
 
 const CONDITION_MULTIPLIERS = {
   DS: 1.0,
@@ -16,6 +17,8 @@ export default function TopBar({ toggleSidebar }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isProUser, setIsProUser] = useState(false); // ⚡ NEW STATE: Tracking PRO in TopBar
 
   const searchInputRef = useRef(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -30,6 +33,7 @@ export default function TopBar({ toggleSidebar }) {
 
   const [liveCredits, setLiveCredits] = useState(0);
   const [userEscrowCredits, setUserEscrowCredits] = useState(0);
+  const [userAvatar, setUserAvatar] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('fi_last_market_search', searchQuery);
@@ -127,13 +131,15 @@ export default function TopBar({ toggleSidebar }) {
   const fetchUserWallet = async (userId) => {
     const { data } = await supabase
       .from('user_profiles')
-      .select('credits, escrow_credits')
+      .select('credits, escrow_credits, avatar_url, is_pro') // ⚡ Added is_pro
       .eq('id', userId)
       .single();
     
     if (data) {
       setLiveCredits(data.credits || 0);
       setUserEscrowCredits(data.escrow_credits || 0);
+      setUserAvatar(data.avatar_url);
+      setIsProUser(data.is_pro || false); // ⚡ Assigning to state
     }
   };
 
@@ -174,6 +180,14 @@ export default function TopBar({ toggleSidebar }) {
     navigate('/dashboard', { replace: true });
   }
 
+  // ⚡ THE NAVIGATION INJECTION: הוספת לוגיקת הניתוב עבור ה-TopBar
+  const handleProfileClick = () => {
+    const username = user?.user_metadata?.user_name || user?.email?.split('@')[0];
+    if (username) {
+      navigate(`/profile/${username}`);
+    }
+  };
+
   const handleResultClick = (item) => {
     setSelectedShoe({ ...item, condition: 'DS' });
     setIsSearchFocused(false);
@@ -212,7 +226,7 @@ export default function TopBar({ toggleSidebar }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={handleSearchFocus}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                placeholder="Search globally (Press '/' to focus)..." 
+                placeholder="Search globally (Press Q/' to focus)..." 
                 className="w-full bg-[#111113] border border-white/10 focus:border-fi-accent rounded-lg pl-8 sm:pl-10 pr-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 outline-none transition-all shadow-inner relative z-0"
               />
             </div>
@@ -253,16 +267,38 @@ export default function TopBar({ toggleSidebar }) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 ml-2 shrink-0">
-          <button className="hidden xl:inline-flex px-3 py-1.5 rounded-lg font-bold text-xs text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-pro-shine hover:opacity-95 transition-opacity whitespace-nowrap items-center shadow-[0_0_15px_rgba(255,215,0,0.1)] shrink-0">
-            UPGRADE TO PRO
-          </button>
+          
+          {/* ⚡ THE UPGRADE BUTTON / PRO STAR BADGE INJECTION */}
+          {isProUser ? (
+            <div title="PRO Status Active" className="hidden xl:flex items-center justify-center w-9 h-9 rounded-full bg-[linear-gradient(110deg,#e2e8f0_10%,#fbcfe8_35%,#c4b5fd_50%,#99f6e4_65%,#e2e8f0_90%)] bg-[length:200%_auto] animate-pro-shine border border-white/50 shadow-[0_0_15px_rgba(203,213,225,0.4)] shrink-0 transition-all cursor-help hover:scale-105 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/90 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <svg className="w-4 h-4 text-zinc-900 drop-shadow-sm relative z-10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+          ) : (
+            <button 
+              type="button"
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className="hidden xl:inline-flex px-3 py-1.5 rounded-lg font-bold text-xs text-black bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-pro-shine hover:opacity-95 transition-opacity whitespace-nowrap items-center shadow-[0_0_15px_rgba(255,215,0,0.1)] shrink-0"
+            >
+              UPGRADE TO PRO
+            </button>
+          )}
           
           <NotificationBell currentUser={user?.user_metadata?.user_name || "DemoUser"} />
           
           {user ? (
             <div className="flex items-center gap-2 border-l border-white/10 pl-2 sm:pl-4 shrink-0">
-              <div className="w-8 h-8 rounded-full bg-[#111113] border border-white/20 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-white/40 transition-colors">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" className="w-full h-full object-cover" />
+              <div 
+                onClick={handleProfileClick}
+                role="button"
+                tabIndex={0}
+                className="w-8 h-8 rounded-full bg-[#111113] border border-white/20 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-white/40 transition-colors"
+              >
+                <img 
+                  src={userAvatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover pointer-events-none" 
+                />
               </div>
               <button onClick={handleLogout} className="hidden lg:block px-2 py-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 text-[10px] uppercase font-bold whitespace-nowrap transition-colors">
                 Logout
@@ -303,6 +339,13 @@ export default function TopBar({ toggleSidebar }) {
       </header>
 
       <TopUpModal isOpen={isTopUpOpen} onClose={() => setIsTopUpOpen(false)} />
+
+      {/* ⚡ THE PORTAL INJECTION (Upgrade Modal) */}
+      <UpgradeModal 
+        isOpen={isUpgradeModalOpen} 
+        onClose={() => setIsUpgradeModalOpen(false)} 
+        currentUser={{ name: user?.user_metadata?.user_name || user?.email?.split('@')[0] }} 
+      />
 
       {selectedShoe && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">

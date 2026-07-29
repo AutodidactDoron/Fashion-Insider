@@ -17,7 +17,10 @@ export default function Signup() {
     setSuccess('');
     setLoading(true);
 
-    if (username.length < 3) {
+    // ⚡ SANITIZATION: ניקוי רווחים מחרוזת
+    const cleanUsername = username.trim();
+
+    if (cleanUsername.length < 3) {
       setError('Username must be at least 3 characters long.');
       setLoading(false);
       return;
@@ -28,27 +31,28 @@ export default function Signup() {
         email, 
         password,
         options: {
-          data: { user_name: username } 
+          data: { user_name: cleanUsername } 
         }
       });
 
       if (err) throw err;
 
       if (data.user) {
-        const { error: profileErr } = await supabase.from('profiles').insert([
+        // ⚡ ARCHITECTURE FIX: הזרקה רזה ונקייה ללא שדות מסוכנים
+        const { error: profileErr } = await supabase.from('user_profiles').insert([
           { 
             id: data.user.id, 
-            user_name: username,
-            xp_points: 0,
-            trust_score: 100.0
+            user_name: cleanUsername 
           }
         ]);
 
         if (profileErr) {
+          console.error("Profile Creation Failed:", profileErr);
           if (profileErr.code === '23505') {
             throw new Error('This username is already taken. Please choose another.');
           }
-          throw profileErr;
+          // אם זה נכשל, נזרוק את השגיאה למשתמש כדי שנדע מזה ולא נייצר יוזרים פגומים
+          throw new Error('Profile setup failed. Please contact support.');
         }
       }
 
