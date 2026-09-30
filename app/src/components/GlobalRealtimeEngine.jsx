@@ -1,24 +1,69 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 export default function GlobalRealtimeEngine() {
-  const [activeUserId, setActiveUserId] = useState(null);
+  const [session, setSession] = useState(null);
+  const [identity, setIdentity] = useState({ id: null, name: null });
+  const identityRef = useRef({ id: null, name: null });
 
+  // ─── בלוק 1: מעקב התחברות. עבודה מקומית בלבד, בלי פנייה לשרת. ───
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setActiveUserId(session?.user?.id || null);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setActiveUserId(session?.user?.id || null);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => setSession(newSession)
+    );
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // ─── בלוק 2: שליפת השם. כאן מותר לפנות לשרת. ───
+  useEffect(() => {
+    let isActive = true;
+
+    const loadProfile = async () => {
+      if (!session?.user?.id) {
+        const empty = { id: null, name: null };
+        identityRef.current = empty;
+        setIdentity(empty);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('user_name')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!isActive) return;
+
+      const resolved = {
+        id: session.user.id,
+        name: profile?.user_name || session.user.user_metadata?.user_name || null,
+      };
+
+      identityRef.current = resolved;
+      setIdentity(resolved);
+    };
+
+    loadProfile();
+    return () => { isActive = false; };
+  }, [session?.user?.id]);
+
+  // ─── בלוק 3: המאזין. ───
   useEffect(() => {
     let godChannel;
-    let isMounted = true; // ⚡ THE KILL SWITCH: מונע יצירת חיבורי רפאים
+    let isMounted = true;
+
+    const isMine = (value) => {
+      if (!value) return false;
+      const me = identityRef.current;
+      if (me.id && value === me.id) return true;
+      if (me.name && typeof value === 'string') {
+        return value.trim().toLowerCase() === me.name.trim().toLowerCase();
+      }
+      return false;
+    };
 
     const connectEngine = () => {
       if (!isMounted) return;
@@ -31,61 +76,73 @@ export default function GlobalRealtimeEngine() {
         .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
           if (!isMounted) return;
 
+          const row = payload.new || payload.old;
+          if (!row) return;
+
           switch (payload.table) {
             case 'user_profiles':
-              if (activeUserId && payload.new && payload.new.id === activeUserId) {
+              if (isMine(row.id)) {
                 window.dispatchEvent(new Event('update_global_credits'));
-                window.dispatchEvent(new Event('force_ts_refresh')); 
+                window.dispatchEvent(new Event('force_ts_refresh'));
               }
               break;
+
             case 'notifications':
-              // ⚡ FILTER: רענן רק אם ההתראה שייכת אלי
-              if (payload.new && payload.new.user_name === activeUserId) {
+              if (isMine(row.user_name)) {
                 window.dispatchEvent(new Event('refresh_notifications'));
               }
               break;
-            case 'trade_rooms':
-              // ⚡ FILTER: רענן את חדר הטריידים רק אם אני מעורב בעסקה הזו
-              const room = payload.new || payload.old;
-              if (room && (room.initiator_name === activeUserId || room.responder_name === activeUserId)) {
+
+            case 'trade_rooms': {
+              if (
+                isMine(row.initiator_id) ||
+                isMine(row.responder_id) ||
+                isMine(row.initiator_name) ||
+                isMine(row.responder_name)
+              ) {
                 window.dispatchEvent(new Event('refresh_trades'));
               }
               break;
+            }
+
             case 'trade_messages':
               window.dispatchEvent(new Event('refresh_trades'));
               break;
+
             case 'post_interests':
               window.dispatchEvent(new Event('refresh_offers'));
               break;
+
             case 'user_closet_items':
-              // ⚡ FILTER: רענן את הארון רק אם הפריט שעודכן שייך אלי
-              if (payload.new && payload.new.user_name === activeUserId) {
+              if (isMine(row.user_name) || isMine(row.owner_id)) {
                 window.dispatchEvent(new Event('refresh_closet'));
               }
               break;
+
             case 'community_posts':
               window.dispatchEvent(new Event('refresh_feed'));
               break;
+
             case 'catalog_items':
             case 'catalog_requests':
               window.dispatchEvent(new Event('refresh_catalog'));
               window.dispatchEvent(new Event('refresh_admin_queues'));
               break;
+
             default:
               break;
           }
         })
         .subscribe((status) => {
           if (!isMounted) return;
-          
+
           if (status === 'SUBSCRIBED') {
-            console.log("🟢 God Mode Engine: Connection Established.");
+            console.log('🟢 God Mode Engine: Connection Established.');
           }
-          
-          // ⚡ FATAL BUG FIXED: הסרנו את 'CLOSED' מפקודת החיבור מחדש
+
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`⚠️ Realtime Link Interrupted (${status}). Executing Reconnection Protocol...`);
-            setTimeout(connectEngine, 3000); 
+            console.warn(`⚠️ Realtime Link Interrupted (${status}). Reconnecting...`);
+            setTimeout(connectEngine, 3000);
           }
         });
     };
@@ -94,19 +151,19 @@ export default function GlobalRealtimeEngine() {
 
     const handleNetworkOnline = () => {
       if (!isMounted) return;
-      console.log("🌐 Internet restored. Forcing interface refresh.");
+      console.log('🌐 Internet restored. Forcing interface refresh.');
       window.dispatchEvent(new Event('refresh_trades'));
       window.dispatchEvent(new Event('refresh_offers'));
       window.dispatchEvent(new Event('refresh_notifications'));
     };
     window.addEventListener('online', handleNetworkOnline);
 
-    return () => { 
-      isMounted = false; // הפעלת מתג ההשמדה בעת יציאה מהעמוד
+    return () => {
+      isMounted = false;
       if (godChannel) supabase.removeChannel(godChannel);
       window.removeEventListener('online', handleNetworkOnline);
     };
-  }, [activeUserId]);
+  }, [identity.id]);
 
   return null;
 }
